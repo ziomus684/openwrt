@@ -1,5 +1,7 @@
 #include "qcom-ipq8064-v2.0.dtsi"
 
+#include <dt-bindings/clock/qcom,rpmcc.h>
+
 / {
 	model = "Qualcomm IPQ8065";
 	compatible = "qcom,ipq8065", "qcom,ipq8064";
@@ -55,6 +57,11 @@
 			 < 800000000 850000 >,
 			 < 600000000 800000 >,
 			 < 384000000 775000 >;
+	};
+
+	nss-common {
+		reg = <0x03000000 0x00001000>;
+		reg-names = "nss_fpb_base";
 	};
 
 	soc: soc {
