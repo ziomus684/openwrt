@@ -670,9 +670,123 @@ struct nss_gmac_data_plane_ops nss_gmac_slowpath_ops = {
 };
 
 /**
+ * @brief Save GMAC statistics
+ * @param[in] pointer to gmac context
+ * @param[in] pointer to gmac statistics
+ * @return Returns void.
+ */
+static void nss_gmac_copy_stats(struct nss_gmac_dev *gmacdev,
+				struct nss_gmac_stats *gstat)
+{
+	BUG_ON(!spin_is_locked(&gmacdev->stats_lock));
+
+	gmacdev->nss_stats.rx_bytes += gstat->rx_bytes;
+	gmacdev->nss_stats.rx_packets += gstat->rx_packets;
+	gmacdev->nss_stats.rx_errors += gstat->rx_errors;
+	gmacdev->nss_stats.rx_receive_errors += gstat->rx_receive_errors;
+	gmacdev->nss_stats.rx_overflow_errors += gstat->rx_overflow_errors;
+	gmacdev->nss_stats.rx_descriptor_errors += gstat->rx_descriptor_errors;
+	gmacdev->nss_stats.rx_watchdog_timeout_errors +=
+		gstat->rx_watchdog_timeout_errors;
+	gmacdev->nss_stats.rx_crc_errors += gstat->rx_crc_errors;
+	gmacdev->nss_stats.rx_late_collision_errors +=
+		gstat->rx_late_collision_errors;
+	gmacdev->nss_stats.rx_dribble_bit_errors += gstat->rx_dribble_bit_errors;
+	gmacdev->nss_stats.rx_length_errors += gstat->rx_length_errors;
+	gmacdev->nss_stats.rx_ip_header_errors += gstat->rx_ip_header_errors;
+	gmacdev->nss_stats.rx_ip_payload_errors += gstat->rx_ip_payload_errors;
+	gmacdev->nss_stats.rx_no_buffer_errors += gstat->rx_no_buffer_errors;
+	gmacdev->nss_stats.rx_transport_csum_bypassed +=
+		gstat->rx_transport_csum_bypassed;
+	gmacdev->nss_stats.tx_bytes += gstat->tx_bytes;
+	gmacdev->nss_stats.tx_packets += gstat->tx_packets;
+	gmacdev->nss_stats.tx_collisions += gstat->tx_collisions;
+	gmacdev->nss_stats.tx_errors += gstat->tx_errors;
+	gmacdev->nss_stats.tx_jabber_timeout_errors +=
+		gstat->tx_jabber_timeout_errors;
+	gmacdev->nss_stats.tx_frame_flushed_errors +=
+		gstat->tx_frame_flushed_errors;
+	gmacdev->nss_stats.tx_loss_of_carrier_errors +=
+		gstat->tx_loss_of_carrier_errors;
+	gmacdev->nss_stats.tx_no_carrier_errors += gstat->tx_no_carrier_errors;
+	gmacdev->nss_stats.tx_late_collision_errors +=
+		gstat->tx_late_collision_errors;
+	gmacdev->nss_stats.tx_excessive_collision_errors +=
+		gstat->tx_excessive_collision_errors;
+	gmacdev->nss_stats.tx_excessive_deferral_errors +=
+		gstat->tx_excessive_deferral_errors;
+	gmacdev->nss_stats.tx_underflow_errors += gstat->tx_underflow_errors;
+	gmacdev->nss_stats.tx_ip_header_errors += gstat->tx_ip_header_errors;
+	gmacdev->nss_stats.tx_ip_payload_errors += gstat->tx_ip_payload_errors;
+	gmacdev->nss_stats.tx_dropped += gstat->tx_dropped;
+	gmacdev->nss_stats.tx_ts_create_errors += gstat->tx_ts_create_errors;
+	gmacdev->nss_stats.hw_errs[0] += gstat->hw_errs[0];
+	gmacdev->nss_stats.hw_errs[1] += gstat->hw_errs[1];
+	gmacdev->nss_stats.hw_errs[2] += gstat->hw_errs[2];
+	gmacdev->nss_stats.hw_errs[3] += gstat->hw_errs[3];
+	gmacdev->nss_stats.hw_errs[4] += gstat->hw_errs[4];
+	gmacdev->nss_stats.hw_errs[5] += gstat->hw_errs[5];
+	gmacdev->nss_stats.hw_errs[6] += gstat->hw_errs[6];
+	gmacdev->nss_stats.hw_errs[7] += gstat->hw_errs[7];
+	gmacdev->nss_stats.hw_errs[8] += gstat->hw_errs[8];
+	gmacdev->nss_stats.hw_errs[9] += gstat->hw_errs[9];
+	gmacdev->nss_stats.rx_missed += gstat->rx_missed;
+	gmacdev->nss_stats.fifo_overflows += gstat->fifo_overflows;
+	gmacdev->nss_stats.rx_scatter_errors += gstat->rx_scatter_errors;
+	gmacdev->nss_stats.gmac_total_ticks += gstat->gmac_total_ticks;
+	gmacdev->nss_stats.gmac_worst_case_ticks += gstat->gmac_worst_case_ticks;
+	gmacdev->nss_stats.gmac_iterations += gstat->gmac_iterations;
+	gmacdev->nss_stats.tx_pause_frames += gstat->tx_pause_frames;
+}
+
+
+/**
+ * @brief Stats Callback to receive statistics from NSS
+ * @param[in] pointer to gmac context
+ * @param[in] pointer to gmac statistics
+ * @return Returns void.
+ */
+static void nss_gmac_stats_receive(struct nss_gmac_dev *gmacdev,
+					struct nss_gmac_stats *gstat)
+{
+	struct net_device *netdev = NULL;
+
+	netdev = (struct net_device *)gmacdev->netdev;
+
+	if (!test_bit(__NSS_GMAC_UP, &gmacdev->flags))
+		return;
+
+	spin_lock(&gmacdev->stats_lock);
+
+	nss_gmac_copy_stats(gmacdev, gstat);
+
+	gmacdev->stats.rx_packets += gstat->rx_packets;
+	gmacdev->stats.rx_bytes += gstat->rx_bytes;
+	gmacdev->stats.rx_errors += gstat->rx_errors;
+	gmacdev->stats.rx_dropped += gstat->rx_errors;
+	gmacdev->stats.rx_length_errors += gstat->rx_length_errors;
+	gmacdev->stats.rx_over_errors += gstat->rx_overflow_errors;
+	gmacdev->stats.rx_crc_errors += gstat->rx_crc_errors;
+	gmacdev->stats.rx_frame_errors += gstat->rx_dribble_bit_errors;
+	gmacdev->stats.rx_fifo_errors += gstat->fifo_overflows;
+	gmacdev->stats.rx_missed_errors += gstat->rx_missed;
+	gmacdev->stats.collisions += gstat->tx_collisions
+		+ gstat->rx_late_collision_errors;
+	gmacdev->stats.tx_packets += gstat->tx_packets;
+	gmacdev->stats.tx_bytes += gstat->tx_bytes;
+	gmacdev->stats.tx_errors += gstat->tx_errors;
+	gmacdev->stats.tx_dropped += gstat->tx_dropped;
+	gmacdev->stats.tx_carrier_errors += gstat->tx_loss_of_carrier_errors
+		+ gstat->tx_no_carrier_errors;
+	gmacdev->stats.tx_fifo_errors += gstat->tx_underflow_errors;
+	gmacdev->stats.tx_window_errors += gstat->tx_late_collision_errors;
+
+	spin_unlock(&gmacdev->stats_lock);
+}
+
+/**
  * NSS Driver interface APIs
  */
-
 
 /**
  * @brief Rx Callback to receive frames from NSS
@@ -703,6 +817,37 @@ void nss_gmac_receive(struct net_device *netdev, struct sk_buff *skb,
 	napi_gro_receive(napi, skb);
 }
 EXPORT_SYMBOL(nss_gmac_receive);
+
+/**
+ * @brief Receive events from nss-drv
+ * @param[in] pointer to net device context
+ * @param[in] event type
+ * @param[in] pointer to buffer
+ * @param[in] length of buffer
+ * @return Returns void
+ */
+void nss_gmac_event_receive(void *if_ctx, int ev_type,
+				void *os_buf, uint32_t len)
+{
+	struct net_device *netdev = NULL;
+	struct nss_gmac_dev *gmacdev = NULL;
+
+	netdev = (struct net_device *)if_ctx;
+	gmacdev = (struct nss_gmac_dev *)netdev_priv(netdev);
+	BUG_ON(!gmacdev);
+
+	switch (ev_type) {
+	case NSS_GMAC_EVENT_STATS:
+		nss_gmac_stats_receive(gmacdev,
+				(struct nss_gmac_stats *)os_buf);
+		break;
+
+	default:
+		netdev_dbg(netdev, "%s: Unknown Event from NSS\n", __func__);
+		break;
+	}
+}
+EXPORT_SYMBOL(nss_gmac_event_receive);
 
 /**
  * @brief Notify linkup event to NSS

@@ -28,6 +28,12 @@
 #define NSS_GMAC_FULL_JUMBO_FRAME_MTU 9600
 
 /*
+ * NSS GMAC event type
+ */
+#define NSS_GMAC_EVENT_STATS	0
+#define NSS_GMAC_EVENT_OTHER	1
+
+/*
  * NSS GMAC status
  */
 #define NSS_GMAC_SUCCESS	0
@@ -45,6 +51,7 @@
  * The NA per-GMAC statistics statistics structure.
  */
 struct nss_gmac_stats {
+	uint64_t interface;		/**< Interface number */
 	uint64_t rx_bytes;		/**< Number of RX bytes */
 	uint64_t rx_packets;		/**< Number of RX packets */
 	uint64_t rx_errors;		/**< Number of RX errors */
@@ -131,6 +138,8 @@ struct nss_gmac_data_plane_ops {
 
 extern void nss_gmac_receive(struct net_device *netdev, struct sk_buff *skb,
 						struct napi_struct *napi);
+extern void nss_gmac_event_receive(void *if_ctx, int ev_type,
+						void *os_buf, uint32_t len);
 void nss_gmac_start_data_plane(struct net_device *netdev, void *ctx);
 extern int nss_gmac_override_data_plane(struct net_device *netdev,
 			struct nss_gmac_data_plane_ops *dp_ops, void *ctx);
