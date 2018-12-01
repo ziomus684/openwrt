@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2016, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2018, The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -36,7 +36,6 @@
 #include <nss_gmac_dev.h>
 #include <nss_gmac_network_interface.h>
 
-
 struct nss_gmac_ethtool_stats {
 	uint8_t stat_string[ETH_GSTRING_LEN];
 	uint32_t stat_offset;
@@ -44,7 +43,8 @@ struct nss_gmac_ethtool_stats {
 
 #define DRVINFO_LEN		32
 #define NSS_GMAC_STAT(m)	offsetof(struct nss_gmac_stats, m)
-#define HW_ERR_SIZE		sizeof(uint32_t)
+#define NSS_GMAC_HOST_STAT(m)	offsetof(struct nss_gmac_host_stats, m)
+#define HW_ERR_SIZE		sizeof(uint64_t)
 
 /**
  * @brief Array of strings describing statistics
@@ -98,6 +98,45 @@ static const struct nss_gmac_ethtool_stats gmac_gstrings_stats[] = {
 	{"gmac_worst_case_ticks", NSS_GMAC_STAT(gmac_worst_case_ticks)},
 	{"gmac_iterations", NSS_GMAC_STAT(gmac_iterations)},
 	{"tx_pause_frames", NSS_GMAC_STAT(tx_pause_frames)},
+	{"rx_octets_g", NSS_GMAC_STAT(rx_octets_g)},
+	{"rx_ucast_frames", NSS_GMAC_STAT(rx_ucast_frames)},
+	{"rx_bcast_frames", NSS_GMAC_STAT(rx_bcast_frames)},
+	{"rx_mcast_frames", NSS_GMAC_STAT(rx_mcast_frames)},
+	{"rx_undersize", NSS_GMAC_STAT(rx_undersize)},
+	{"rx_oversize", NSS_GMAC_STAT(rx_oversize)},
+	{"rx_jabber", NSS_GMAC_STAT(rx_jabber)},
+	{"rx_octets_gb", NSS_GMAC_STAT(rx_octets_gb)},
+	{"rx_frag_frames_g", NSS_GMAC_STAT(rx_frag_frames_g)},
+	{"tx_octets_g", NSS_GMAC_STAT(tx_octets_g)},
+	{"tx_ucast_frames", NSS_GMAC_STAT(tx_ucast_frames)},
+	{"tx_bcast_frames", NSS_GMAC_STAT(tx_bcast_frames)},
+	{"tx_mcast_frames", NSS_GMAC_STAT(tx_mcast_frames)},
+	{"tx_deferred", NSS_GMAC_STAT(tx_deferred)},
+	{"tx_single_col", NSS_GMAC_STAT(tx_single_col)},
+	{"tx_multiple_col", NSS_GMAC_STAT(tx_multiple_col)},
+	{"tx_octets_gb", NSS_GMAC_STAT(tx_octets_gb)},
+};
+
+/**
+ * @brief Array of strings describing NSS Host statistics
+ */
+static const struct nss_gmac_ethtool_stats gmac_gstrings_host_stats[] = {
+	{"rx_prec0", NSS_GMAC_HOST_STAT(rx_per_prec[0])},
+	{"rx_prec1", NSS_GMAC_HOST_STAT(rx_per_prec[1])},
+	{"rx_prec2", NSS_GMAC_HOST_STAT(rx_per_prec[2])},
+	{"rx_prec3", NSS_GMAC_HOST_STAT(rx_per_prec[3])},
+	{"rx_prec4", NSS_GMAC_HOST_STAT(rx_per_prec[4])},
+	{"rx_prec5", NSS_GMAC_HOST_STAT(rx_per_prec[5])},
+	{"rx_prec6", NSS_GMAC_HOST_STAT(rx_per_prec[6])},
+	{"rx_prec7", NSS_GMAC_HOST_STAT(rx_per_prec[7])},
+	{"tx_prec0", NSS_GMAC_HOST_STAT(tx_per_prec[0])},
+	{"tx_prec1", NSS_GMAC_HOST_STAT(tx_per_prec[1])},
+	{"tx_prec2", NSS_GMAC_HOST_STAT(tx_per_prec[2])},
+	{"tx_prec3", NSS_GMAC_HOST_STAT(tx_per_prec[3])},
+	{"tx_prec4", NSS_GMAC_HOST_STAT(tx_per_prec[4])},
+	{"tx_prec5", NSS_GMAC_HOST_STAT(tx_per_prec[5])},
+	{"tx_prec6", NSS_GMAC_HOST_STAT(tx_per_prec[6])},
+	{"tx_prec7", NSS_GMAC_HOST_STAT(tx_per_prec[7])},
 };
 
 /**
@@ -109,6 +148,7 @@ static const char *gmac_strings_priv_flags[] = {
 };
 
 #define NSS_GMAC_STATS_LEN	ARRAY_SIZE(gmac_gstrings_stats)
+#define NSS_GMAC_HOST_STATS_LEN	ARRAY_SIZE(gmac_gstrings_host_stats)
 #define NSS_GMAC_PRIV_FLAGS_LEN	ARRAY_SIZE(gmac_strings_priv_flags)
 
 /**
@@ -121,7 +161,7 @@ static int32_t nss_gmac_get_strset_count(struct net_device *netdev,
 {
 	switch (sset) {
 	case ETH_SS_STATS:
-		return NSS_GMAC_STATS_LEN;
+		return NSS_GMAC_STATS_LEN + NSS_GMAC_HOST_STATS_LEN;
 
 	case ETH_SS_PRIV_FLAGS:
 		return NSS_GMAC_PRIV_FLAGS_LEN;
@@ -153,6 +193,11 @@ static void nss_gmac_get_strings(struct net_device *netdev, uint32_t stringset,
 				ETH_GSTRING_LEN);
 			p += ETH_GSTRING_LEN;
 		}
+		for (i = 0; i < NSS_GMAC_HOST_STATS_LEN; i++) {
+			memcpy(p, gmac_gstrings_host_stats[i].stat_string,
+				ETH_GSTRING_LEN);
+			p += ETH_GSTRING_LEN;
+		}
 		break;
 
 	case ETH_SS_PRIV_FLAGS:
@@ -166,7 +211,6 @@ static void nss_gmac_get_strings(struct net_device *netdev, uint32_t stringset,
 	}
 }
 
-
 /**
  * @brief Get statistics
  * @param[in] pointer to struct net_device.
@@ -177,14 +221,27 @@ static void nss_gmac_get_ethtool_stats(struct net_device *netdev,
 				struct ethtool_stats *stats, uint64_t *data)
 {
 	struct nss_gmac_dev *gmacdev = netdev_priv(netdev);
-	int32_t i;
+	int32_t i, j;
 	uint8_t *p = NULL;
 
+	if (!gmacdev->data_plane_ops)
+		return;
+
 	spin_lock_bh(&gmacdev->stats_lock);
+	gmacdev->data_plane_ops->get_stats(gmacdev->data_plane_ctx, &gmacdev->nss_stats);
+
+	/* Update NSS FW stats */
 	for (i = 0; i < NSS_GMAC_STATS_LEN; i++) {
 		p = (uint8_t *)&(gmacdev->nss_stats) +
 					gmac_gstrings_stats[i].stat_offset;
-		data[i] = *(uint32_t *)p;
+		data[i] = *(uint64_t *)p;
+	}
+
+	/* Update NSS GMAC Host stats */
+	for (i = NSS_GMAC_STATS_LEN, j = 0; i < NSS_GMAC_STATS_LEN + NSS_GMAC_HOST_STATS_LEN; i++) {
+		p = (uint8_t *)&(gmacdev->nss_host_stats) +
+					gmac_gstrings_host_stats[j++].stat_offset;
+		data[i] = *(uint64_t *)p;
 	}
 	spin_unlock_bh(&gmacdev->stats_lock);
 }
@@ -199,8 +256,8 @@ static void nss_gmac_get_ethtool_stats(struct net_device *netdev,
 static void nss_gmac_get_drvinfo(struct net_device *dev,
 						struct ethtool_drvinfo *info)
 {
-	strlcpy(info->driver, nss_gmac_driver_string, DRVINFO_LEN);
-	strlcpy(info->version, nss_gmac_driver_version, DRVINFO_LEN);
+	strlcpy(info->driver, nss_gmac_driver_string, sizeof(info->driver));
+	strlcpy(info->version, nss_gmac_driver_version, sizeof(info->version));
 	strlcpy(info->bus_info, "NSS", ETHTOOL_BUSINFO_LEN);
 	info->n_priv_flags = __NSS_GMAC_PRIV_FLAG_MAX;
 }
@@ -214,9 +271,7 @@ static void nss_gmac_get_drvinfo(struct net_device *dev,
 static void nss_gmac_get_pauseparam(struct net_device *netdev,
 			     struct ethtool_pauseparam *pause)
 {
-	struct nss_gmac_dev *gmacdev = NULL;
-
-	gmacdev = (struct nss_gmac_dev *)netdev_priv(netdev);
+	struct nss_gmac_dev *gmacdev = (struct nss_gmac_dev *)netdev_priv(netdev);
 	BUG_ON(gmacdev == NULL);
 	BUG_ON(gmacdev->netdev != netdev);
 
@@ -234,10 +289,9 @@ static void nss_gmac_get_pauseparam(struct net_device *netdev,
 static int nss_gmac_set_pauseparam(struct net_device *netdev,
 			    struct ethtool_pauseparam *pause)
 {
-	struct nss_gmac_dev *gmacdev = NULL;
-	struct phy_device *phydev = NULL;
+	struct nss_gmac_dev *gmacdev = (struct nss_gmac_dev *)netdev_priv(netdev);
+	struct phy_device *phydev;
 
-	gmacdev = (struct nss_gmac_dev *)netdev_priv(netdev);
 	BUG_ON(gmacdev == NULL);
 	BUG_ON(gmacdev->netdev != netdev);
 
@@ -253,8 +307,21 @@ static int nss_gmac_set_pauseparam(struct net_device *netdev,
 	 * If the link polling for this GMAC is disabled, we do not
 	 * attempt to make changes to the PHY settings.
 	 */
-	if (!test_bit(__NSS_GMAC_LINKPOLL, &gmacdev->flags))
+	if (!test_bit(__NSS_GMAC_LINKPOLL, &gmacdev->flags)) {
+		if (gmacdev->forced_speed != SPEED_UNKNOWN) {
+			if (gmacdev->pause & FLOW_CTRL_TX)
+				nss_gmac_tx_pause_enable(gmacdev);
+			else
+				nss_gmac_tx_pause_disable(gmacdev);
+
+			if (gmacdev->pause & FLOW_CTRL_RX)
+				nss_gmac_rx_pause_enable(gmacdev);
+			else
+				nss_gmac_rx_pause_disable(gmacdev);
+		}
+
 		return 0;
+	}
 
 	phydev = gmacdev->phydev;
 
@@ -279,9 +346,7 @@ static int nss_gmac_set_pauseparam(struct net_device *netdev,
  */
 static int nss_gmac_nway_reset(struct net_device *netdev)
 {
-	struct nss_gmac_dev *gmacdev = NULL;
-
-	gmacdev = (struct nss_gmac_dev *)netdev_priv(netdev);
+	struct nss_gmac_dev *gmacdev = (struct nss_gmac_dev *)netdev_priv(netdev);
 	BUG_ON(gmacdev == NULL);
 
 	if (!netif_running(netdev))
@@ -333,11 +398,10 @@ static uint32_t nss_gmac_get_msglevel(struct net_device *netdev)
 static int32_t nss_gmac_get_settings(struct net_device *netdev,
 			      struct ethtool_cmd *ecmd)
 {
-	struct nss_gmac_dev *gmacdev = NULL;
+	struct nss_gmac_dev *gmacdev = (struct nss_gmac_dev *)netdev_priv(netdev);
 	struct phy_device *phydev = NULL;
 	uint16_t phyreg;
 
-	gmacdev = (struct nss_gmac_dev *)netdev_priv(netdev);
 	BUG_ON(gmacdev == NULL);
 
 	/*
@@ -434,10 +498,9 @@ static int32_t nss_gmac_get_settings(struct net_device *netdev,
 static int32_t nss_gmac_set_settings(struct net_device *netdev,
 			      struct ethtool_cmd *ecmd)
 {
-	struct nss_gmac_dev *gmacdev = NULL;
+	struct nss_gmac_dev *gmacdev = (struct nss_gmac_dev *)netdev_priv(netdev);
 	struct phy_device *phydev = NULL;
 
-	gmacdev = (struct nss_gmac_dev *)netdev_priv(netdev);
 	BUG_ON(gmacdev == NULL);
 
 	/*
@@ -451,25 +514,17 @@ static int32_t nss_gmac_set_settings(struct net_device *netdev,
 		return -EPERM;
 
 	phydev = gmacdev->phydev;
+	if (!phydev) {
+		return -EPERM;
+	}
 
-	mutex_lock(&gmacdev->link_mutex);
-	nss_gmac_linkdown(gmacdev);
-	mutex_unlock(&gmacdev->link_mutex);
-
-	phydev->advertising = ecmd->advertising;
-	phydev->autoneg = ecmd->autoneg;
-
-	phydev->speed = ethtool_cmd_speed(ecmd);
-	phydev->duplex = ecmd->duplex;
-
-	if (ecmd->autoneg == AUTONEG_ENABLE)
+	if (ecmd->autoneg == AUTONEG_ENABLE) {
 		set_bit(__NSS_GMAC_AUTONEG, &gmacdev->flags);
-	else
+	} else {
 		clear_bit(__NSS_GMAC_AUTONEG, &gmacdev->flags);
+	}
 
-	genphy_config_aneg(phydev);
-
-	return 0;
+	return phy_ethtool_sset(phydev, ecmd);
 }
 
 /**

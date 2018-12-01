@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2016, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2017, The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -34,6 +34,8 @@
 #include <linux/bitops.h>
 #include <linux/phy.h>
 #include <linux/interrupt.h>
+#include <linux/ip.h>
+#include <linux/ipv6.h>
 
 #include <nss_gmac_dev.h>
 #include <nss_gmac_network_interface.h>
@@ -111,6 +113,142 @@ static int32_t nss_gmac_setup_tx_desc_queue(struct nss_gmac_dev *gmacdev,
 	return 0;
 }
 
+/* nss_gmac_get_v4_precedence()
+ *	Function to retrieve precedence for IPv4
+ */
+static inline int nss_gmac_get_v4_precedence(struct sk_buff *skb,
+					     int nh_offset,
+					     u8 *precedence)
+{
+	const struct iphdr *iph;
+	struct iphdr iph_hdr;
+
+	iph = skb_header_pointer(skb, nh_offset, sizeof(iph_hdr), &iph_hdr);
+
+	if (!iph || iph->ihl < 5)
+		return -1;
+
+	*precedence = iph->tos >> NSS_GMAC_DSCP_PREC_SHIFT;
+
+	return 0;
+}
+
+/* nss_gmac_get_v6_precedence()
+ *	Function to retrieve precedence for IPv6
+ */
+static inline int nss_gmac_get_v6_precedence(struct sk_buff *skb,
+					     int nh_offset,
+					     u8 *precedence)
+{
+	const struct ipv6hdr *iph;
+	struct ipv6hdr iph_hdr;
+
+	iph = skb_header_pointer(skb, nh_offset, sizeof(iph_hdr), &iph_hdr);
+
+	if (!iph)
+		return -1;
+
+	*precedence = iph->priority >> NSS_GMAC_DSCP6_PREC_SHIFT;
+
+	return 0;
+}
+
+/* nss_gmac_get_skb_precedence()
+ *      Function to retrieve precedence from skb
+ */
+static bool nss_gmac_get_skb_precedence(struct sk_buff *skb, u8 *precedence)
+{
+	int nhoff = skb_network_offset(skb);
+	__be16 proto = skb->protocol;
+	int ret;
+	struct pppoeh_proto *pppoeh, ppp_hdr;
+	const struct vlan_hdr *vlan;
+	struct vlan_hdr _vlan;
+
+inner:
+	switch (proto) {
+	case __constant_htons(ETH_P_IP): {
+		ret = nss_gmac_get_v4_precedence(skb, nhoff, precedence);
+		if (ret)
+			return false;
+		break;
+	}
+	case __constant_htons(ETH_P_IPV6): {
+		ret = nss_gmac_get_v6_precedence(skb, nhoff, precedence);
+		if (ret)
+			return false;
+		break;
+	}
+	case __constant_htons(ETH_P_8021AD):
+	case __constant_htons(ETH_P_8021Q): {
+		vlan = skb_header_pointer(skb, nhoff, sizeof(_vlan), &_vlan);
+		if (!vlan)
+				return false;
+
+		proto = vlan->h_vlan_encapsulated_proto;
+
+		nhoff += sizeof(*vlan);
+		goto inner;
+	}
+	case __constant_htons(ETH_P_PPP_SES): {
+		pppoeh = skb_header_pointer(skb, nhoff,
+					    sizeof(ppp_hdr),
+					    &ppp_hdr);
+		if (!pppoeh)
+			return false;
+
+		proto = pppoeh->proto;
+		nhoff += PPPOE_SES_HLEN;
+		switch (proto) {
+		case __constant_htons(PPP_IP): {
+			ret = nss_gmac_get_v4_precedence(skb,
+							 nhoff,
+							 precedence);
+			if (ret)
+				return false;
+			break;
+		}
+		case __constant_htons(PPP_IPV6): {
+			ret = nss_gmac_get_v6_precedence(skb,
+							 nhoff,
+							 precedence);
+			if (ret)
+				return false;
+			break;
+		}
+		default:
+			return false;
+		}
+		break;
+	}
+	default:
+		return false;
+	}
+
+	return true;
+}
+
+/* nss_gmac_update_prec_stats()
+ *      Function to update per-precedence stats
+ */
+void nss_gmac_update_prec_stats(struct nss_gmac_dev *gmacdev, struct sk_buff *skb, uint8_t dir)
+{
+	uint8_t precedence = 0;
+
+	if (dir == __NSS_GMAC_DIR_RX)
+		skb_reset_network_header(skb);
+
+	if (nss_gmac_get_skb_precedence(skb, &precedence)) {
+
+		spin_lock_bh(&gmacdev->stats_lock);
+		if (dir == __NSS_GMAC_DIR_TX)
+			gmacdev->nss_host_stats.tx_per_prec[precedence]++;
+		else if (dir == __NSS_GMAC_DIR_RX)
+			gmacdev->nss_host_stats.rx_per_prec[precedence]++;
+		spin_unlock_bh(&gmacdev->stats_lock);
+
+	}
+}
 
 /**
  * This sets up the receive Descriptor queue in ring or chain mode.
@@ -512,6 +650,13 @@ static int nss_gmac_slowpath_if_pause_on_off(void *app_data, uint32_t pause_on)
 	return NSS_GMAC_SUCCESS;
 }
 
+/*
+ * nss_gmac_slowpath_if_get_stats()
+ */
+static void nss_gmac_slowpath_if_get_stats(void *app_data, struct nss_gmac_stats *stats)
+{
+}
+
 struct nss_gmac_data_plane_ops nss_gmac_slowpath_ops = {
 	.open		= nss_gmac_slowpath_if_open,
 	.close		= nss_gmac_slowpath_if_close,
@@ -521,126 +666,13 @@ struct nss_gmac_data_plane_ops nss_gmac_slowpath_ops = {
 	.xmit		= nss_gmac_slowpath_if_xmit,
 	.set_features	= nss_gmac_slowpath_if_set_features,
 	.pause_on_off	= nss_gmac_slowpath_if_pause_on_off,
+	.get_stats	= nss_gmac_slowpath_if_get_stats,
 };
-
-/**
- * @brief Save GMAC statistics
- * @param[in] pointer to gmac context
- * @param[in] pointer to gmac statistics
- * @return Returns void.
- */
-static void nss_gmac_copy_stats(struct nss_gmac_dev *gmacdev,
-				struct nss_gmac_stats *gstat)
-{
-	BUG_ON(!spin_is_locked(&gmacdev->stats_lock));
-
-	gmacdev->nss_stats.rx_bytes += gstat->rx_bytes;
-	gmacdev->nss_stats.rx_packets += gstat->rx_packets;
-	gmacdev->nss_stats.rx_errors += gstat->rx_errors;
-	gmacdev->nss_stats.rx_receive_errors += gstat->rx_receive_errors;
-	gmacdev->nss_stats.rx_overflow_errors += gstat->rx_overflow_errors;
-	gmacdev->nss_stats.rx_descriptor_errors += gstat->rx_descriptor_errors;
-	gmacdev->nss_stats.rx_watchdog_timeout_errors +=
-		gstat->rx_watchdog_timeout_errors;
-	gmacdev->nss_stats.rx_crc_errors += gstat->rx_crc_errors;
-	gmacdev->nss_stats.rx_late_collision_errors +=
-		gstat->rx_late_collision_errors;
-	gmacdev->nss_stats.rx_dribble_bit_errors += gstat->rx_dribble_bit_errors;
-	gmacdev->nss_stats.rx_length_errors += gstat->rx_length_errors;
-	gmacdev->nss_stats.rx_ip_header_errors += gstat->rx_ip_header_errors;
-	gmacdev->nss_stats.rx_ip_payload_errors += gstat->rx_ip_payload_errors;
-	gmacdev->nss_stats.rx_no_buffer_errors += gstat->rx_no_buffer_errors;
-	gmacdev->nss_stats.rx_transport_csum_bypassed +=
-		gstat->rx_transport_csum_bypassed;
-	gmacdev->nss_stats.tx_bytes += gstat->tx_bytes;
-	gmacdev->nss_stats.tx_packets += gstat->tx_packets;
-	gmacdev->nss_stats.tx_collisions += gstat->tx_collisions;
-	gmacdev->nss_stats.tx_errors += gstat->tx_errors;
-	gmacdev->nss_stats.tx_jabber_timeout_errors +=
-		gstat->tx_jabber_timeout_errors;
-	gmacdev->nss_stats.tx_frame_flushed_errors +=
-		gstat->tx_frame_flushed_errors;
-	gmacdev->nss_stats.tx_loss_of_carrier_errors +=
-		gstat->tx_loss_of_carrier_errors;
-	gmacdev->nss_stats.tx_no_carrier_errors += gstat->tx_no_carrier_errors;
-	gmacdev->nss_stats.tx_late_collision_errors +=
-		gstat->tx_late_collision_errors;
-	gmacdev->nss_stats.tx_excessive_collision_errors +=
-		gstat->tx_excessive_collision_errors;
-	gmacdev->nss_stats.tx_excessive_deferral_errors +=
-		gstat->tx_excessive_deferral_errors;
-	gmacdev->nss_stats.tx_underflow_errors += gstat->tx_underflow_errors;
-	gmacdev->nss_stats.tx_ip_header_errors += gstat->tx_ip_header_errors;
-	gmacdev->nss_stats.tx_ip_payload_errors += gstat->tx_ip_payload_errors;
-	gmacdev->nss_stats.tx_dropped += gstat->tx_dropped;
-	gmacdev->nss_stats.tx_ts_create_errors += gstat->tx_ts_create_errors;
-	gmacdev->nss_stats.hw_errs[0] += gstat->hw_errs[0];
-	gmacdev->nss_stats.hw_errs[1] += gstat->hw_errs[1];
-	gmacdev->nss_stats.hw_errs[2] += gstat->hw_errs[2];
-	gmacdev->nss_stats.hw_errs[3] += gstat->hw_errs[3];
-	gmacdev->nss_stats.hw_errs[4] += gstat->hw_errs[4];
-	gmacdev->nss_stats.hw_errs[5] += gstat->hw_errs[5];
-	gmacdev->nss_stats.hw_errs[6] += gstat->hw_errs[6];
-	gmacdev->nss_stats.hw_errs[7] += gstat->hw_errs[7];
-	gmacdev->nss_stats.hw_errs[8] += gstat->hw_errs[8];
-	gmacdev->nss_stats.hw_errs[9] += gstat->hw_errs[9];
-	gmacdev->nss_stats.rx_missed += gstat->rx_missed;
-	gmacdev->nss_stats.fifo_overflows += gstat->fifo_overflows;
-	gmacdev->nss_stats.rx_scatter_errors += gstat->rx_scatter_errors;
-	gmacdev->nss_stats.gmac_total_ticks += gstat->gmac_total_ticks;
-	gmacdev->nss_stats.gmac_worst_case_ticks += gstat->gmac_worst_case_ticks;
-	gmacdev->nss_stats.gmac_iterations += gstat->gmac_iterations;
-	gmacdev->nss_stats.tx_pause_frames += gstat->tx_pause_frames;
-}
-
-
-/**
- * @brief Stats Callback to receive statistics from NSS
- * @param[in] pointer to gmac context
- * @param[in] pointer to gmac statistics
- * @return Returns void.
- */
-static void nss_gmac_stats_receive(struct nss_gmac_dev *gmacdev,
-					struct nss_gmac_stats *gstat)
-{
-	struct net_device *netdev = NULL;
-
-	netdev = (struct net_device *)gmacdev->netdev;
-
-	if (!test_bit(__NSS_GMAC_UP, &gmacdev->flags))
-		return;
-
-	spin_lock(&gmacdev->stats_lock);
-
-	nss_gmac_copy_stats(gmacdev, gstat);
-
-	gmacdev->stats.rx_packets += gstat->rx_packets;
-	gmacdev->stats.rx_bytes += gstat->rx_bytes;
-	gmacdev->stats.rx_errors += gstat->rx_errors;
-	gmacdev->stats.rx_dropped += gstat->rx_errors;
-	gmacdev->stats.rx_length_errors += gstat->rx_length_errors;
-	gmacdev->stats.rx_over_errors += gstat->rx_overflow_errors;
-	gmacdev->stats.rx_crc_errors += gstat->rx_crc_errors;
-	gmacdev->stats.rx_frame_errors += gstat->rx_dribble_bit_errors;
-	gmacdev->stats.rx_fifo_errors += gstat->fifo_overflows;
-	gmacdev->stats.rx_missed_errors += gstat->rx_missed;
-	gmacdev->stats.collisions += gstat->tx_collisions
-		+ gstat->rx_late_collision_errors;
-	gmacdev->stats.tx_packets += gstat->tx_packets;
-	gmacdev->stats.tx_bytes += gstat->tx_bytes;
-	gmacdev->stats.tx_errors += gstat->tx_errors;
-	gmacdev->stats.tx_dropped += gstat->tx_dropped;
-	gmacdev->stats.tx_carrier_errors += gstat->tx_loss_of_carrier_errors
-		+ gstat->tx_no_carrier_errors;
-	gmacdev->stats.tx_fifo_errors += gstat->tx_underflow_errors;
-	gmacdev->stats.tx_window_errors += gstat->tx_late_collision_errors;
-
-	spin_unlock(&gmacdev->stats_lock);
-}
 
 /**
  * NSS Driver interface APIs
  */
+
 
 /**
  * @brief Rx Callback to receive frames from NSS
@@ -665,40 +697,12 @@ void nss_gmac_receive(struct net_device *netdev, struct sk_buff *skb,
 			"%s: Rx on gmac%d, packet len %d, CSUM %d\n",
 			__func__, gmacdev->macid, skb->len, skb->ip_summed);
 
+	if (gmacdev->ctx->nss_gmac_per_prec_stats_enable)
+		nss_gmac_update_prec_stats(gmacdev, skb, __NSS_GMAC_DIR_RX);
+
 	napi_gro_receive(napi, skb);
 }
 EXPORT_SYMBOL(nss_gmac_receive);
-
-/**
- * @brief Receive events from nss-drv
- * @param[in] pointer to net device context
- * @param[in] event type
- * @param[in] pointer to buffer
- * @param[in] length of buffer
- * @return Returns void
- */
-void nss_gmac_event_receive(void *if_ctx, int ev_type,
-				void *os_buf, uint32_t len)
-{
-	struct net_device *netdev = NULL;
-	struct nss_gmac_dev *gmacdev = NULL;
-
-	netdev = (struct net_device *)if_ctx;
-	gmacdev = (struct nss_gmac_dev *)netdev_priv(netdev);
-	BUG_ON(!gmacdev);
-
-	switch (ev_type) {
-	case NSS_GMAC_EVENT_STATS:
-		nss_gmac_stats_receive(gmacdev,
-				(struct nss_gmac_stats *)os_buf);
-		break;
-
-	default:
-		netdev_dbg(netdev, "%s: Unknown Event from NSS\n", __func__);
-		break;
-	}
-}
-EXPORT_SYMBOL(nss_gmac_event_receive);
 
 /**
  * @brief Notify linkup event to NSS
@@ -818,9 +822,7 @@ void nss_gmac_linkdown(struct nss_gmac_dev *gmacdev)
 void nss_gmac_adjust_link(struct net_device *netdev)
 {
 	int32_t status = 0;
-	struct nss_gmac_dev *gmacdev = NULL;
-
-	gmacdev = netdev_priv(netdev);
+	struct nss_gmac_dev *gmacdev = (struct nss_gmac_dev *)netdev_priv(netdev);
 
 	if (!test_bit(__NSS_GMAC_UP, &gmacdev->flags))
 		return;
@@ -878,7 +880,7 @@ void nss_gmac_start_up(struct nss_gmac_dev *gmacdev)
 int32_t nss_gmac_xmit_frames(struct sk_buff *skb, struct net_device *netdev)
 {
 	int msg_status = 0;
-	struct nss_gmac_dev *gmacdev = NULL;
+	struct nss_gmac_dev *gmacdev = (struct nss_gmac_dev *)netdev_priv(netdev);
 
 	BUG_ON(skb == NULL);
 	if (skb->len < ETH_HLEN) {
@@ -886,12 +888,14 @@ int32_t nss_gmac_xmit_frames(struct sk_buff *skb, struct net_device *netdev)
 		goto drop;
 	}
 
-	gmacdev = (struct nss_gmac_dev *)netdev_priv(netdev);
 	BUG_ON(gmacdev == NULL);
 	BUG_ON(gmacdev->netdev != netdev);
 
 	netdev_dbg(netdev, "%s:Tx packet, len %d, CSUM %d\n",
 			__func__, skb->len, skb->ip_summed);
+
+	if (gmacdev->ctx->nss_gmac_per_prec_stats_enable)
+		nss_gmac_update_prec_stats(gmacdev, skb, __NSS_GMAC_DIR_TX);
 
 	msg_status = gmacdev->data_plane_ops->xmit(gmacdev->data_plane_ctx, skb);
 
@@ -1042,9 +1046,7 @@ int nss_gmac_close(struct net_device *netdev)
  */
 void nss_gmac_tx_timeout(struct net_device *netdev)
 {
-	struct nss_gmac_dev *gmacdev = NULL;
-
-	gmacdev = (struct nss_gmac_dev *)netdev_priv(netdev);
+	struct nss_gmac_dev *gmacdev = (struct nss_gmac_dev *)netdev_priv(netdev);
 	BUG_ON(gmacdev == NULL);
 
 	netif_carrier_off(netdev);
@@ -1064,9 +1066,7 @@ void nss_gmac_tx_timeout(struct net_device *netdev)
  */
 int32_t nss_gmac_change_mtu(struct net_device *netdev, int32_t newmtu)
 {
-	struct nss_gmac_dev *gmacdev = NULL;
-
-	gmacdev = (struct nss_gmac_dev *)netdev_priv(netdev);
+	struct nss_gmac_dev *gmacdev = (struct nss_gmac_dev *)netdev_priv(netdev);
 	if (!gmacdev)
 		return -EINVAL;
 

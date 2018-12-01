@@ -1,6 +1,6 @@
 /*
  **************************************************************************
- * Copyright (c) 2013-2016, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2018, The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -33,6 +33,9 @@
 #include <linux/platform_device.h>
 #include <linux/ethtool.h>
 #include <linux/dma-mapping.h>
+#include <linux/kernel.h>
+#include <linux/ppp_defs.h>
+#include <linux/if_pppox.h>
 #include <asm/cacheflush.h>
 #include <asm/io.h>
 
@@ -96,9 +99,7 @@
 					| ADVERTISED_100baseT_Full	\
 					| ADVERTISED_1000baseT_Full	\
 					| ADVERTISED_Autoneg		\
-					| ADVERTISED_TP			\
-					| ADVERTISED_Pause		\
-					| ADVERTISED_Asym_Pause)
+					| ADVERTISED_TP)
 
 /* MDIO address space register offsets */
 #define ATH_MII_MMD_ACCESS_CTRL				0xD
@@ -109,11 +110,17 @@
 #define ATH_MMD_DEVADDR_7				7
 #define NSS_GMAC_COMMON_DEVICE_NODE	"nss-gmac-common"
 
+/* DSCP Precedence Bit shift values */
+#define NSS_GMAC_DSCP_PREC_SHIFT 5
+#define NSS_GMAC_DSCP6_PREC_SHIFT 1
+
+#define NSS_GMAC_PRECEDENCE_MAX 8
+
 static const uint8_t nss_gmac_driver_string[] =
-	"NSS GMAC Driver for RTL v" NSS_GMAC_RTL_VER;
+	"NSS GMAC Driver - RTL v" NSS_GMAC_RTL_VER;
 static const uint8_t nss_gmac_driver_version[] = "1.0";
 static const uint8_t nss_gmac_copyright[] =
-	"Copyright (c) 2013-2016 The Linux Foundation. All rights reserved.";
+	"Copyright (c) 2013-2018 The Linux Foundation. All rights reserved.";
 
 /**
  * @brief DMA Descriptor Structure
@@ -152,6 +159,11 @@ enum desc_mode {
 
 #define NSS_GMAC_WORKQUEUE_NAME		"gmac_workqueue"
 struct nss_gmac_global_ctx;
+
+struct nss_gmac_host_stats {
+	uint64_t rx_per_prec[NSS_GMAC_PRECEDENCE_MAX];	/**< Number of packets per precedence received by GMAC */
+	uint64_t tx_per_prec[NSS_GMAC_PRECEDENCE_MAX];	/**< Number of packets per precedence xmited by GMAC */
+};
 
 /**
  * @brief NSS GMAC device data
@@ -245,7 +257,8 @@ struct nss_gmac_dev {
 
 	void *data_plane_ctx;		/* context when NSS owns GMACs        */
 	struct phy_device *phydev;	/* Phy device			      */
-	struct nss_gmac_stats nss_stats;/* Stats synced from NSS	      */
+	struct nss_gmac_stats nss_stats; /* Stats synced from NSS	*/
+	struct nss_gmac_host_stats nss_host_stats; /* NSS GMAC Host stats	*/
 	struct mii_bus *miibus;		/* MDIO bus associated with this GMAC */
 	struct nss_gmac_data_plane_ops *data_plane_ops;
 					/* ops to send messages to nss-drv    */
@@ -287,8 +300,21 @@ struct nss_gmac_global_ctx {
 					   needed for this platform? */
 	struct nss_gmac_dev *nss_gmac[NSS_MAX_GMACS];
 	bool common_init_done;		/* Flag to hold common init done state */
+	struct ctl_table_header *gmac_ctl_table_header;	/* sysctl table to enable/reset stats */
+	uint32_t nss_gmac_per_prec_stats_enable;	/* Flag to enable/disable per-precedence stats */
+	uint32_t nss_gmac_per_prec_stats_reset; 	/* Flag to reset per-precedence stats */
 };
 
+/* PPPoE header info */
+struct pppoeh_proto {
+	struct pppoe_hdr hdr;
+	__be16 proto;
+};
+
+enum nss_gmac_direction {
+	__NSS_GMAC_DIR_TX,
+	__NSS_GMAC_DIR_RX,
+};
 
 enum nss_gmac_state {
 	__NSS_GMAC_UP,		/* set to indicate the interface is UP	      */
@@ -1300,6 +1326,10 @@ enum mmc_enable {
 					   generated from tx counters   */
 };
 
+enum mmc_config_reg {
+	gmac_mmc_cor = 0x00000004,		/* Set mmc counters Clear-on-Read */
+};
+
 enum mmc_ip_related {
 	gmac_mmc_rx_ipc_intr_mask = 0x0200,
 /*Maintains the mask for interrupt generated from rx IPC statistic counters   */
@@ -2138,5 +2168,12 @@ void nss_gmac_disable_mmc_rx_interrupt(struct nss_gmac_dev *gmacdev,
 							uint32_t mask);
 void nss_gmac_disable_mmc_ipc_rx_interrupt(struct nss_gmac_dev *gmacdev,
 					   uint32_t mask);
+/* Sysctl handler APIs */
+int nss_gmac_per_prec_stats_enable_handler(struct ctl_table *table, int write,
+					   void __user *buffer, size_t *lenp,
+					   loff_t *ppos);
+int nss_gmac_per_prec_stats_reset_handler(struct ctl_table *table, int write,
+					   void __user *buffer, size_t *lenp,
+					   loff_t *ppos);
 
 #endif /* End of file */

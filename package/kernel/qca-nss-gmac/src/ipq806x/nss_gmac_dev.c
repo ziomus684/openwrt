@@ -854,8 +854,23 @@ void nss_gmac_tx_pause_enable(struct nss_gmac_dev *gmacdev)
 {
 	netdev_dbg(gmacdev->netdev, "%s: enable Tx flow control\n", __func__);
 
+	if (gmacdev->data_plane_ops->pause_on_off(gmacdev->data_plane_ctx, 1)
+							!= NSS_GMAC_SUCCESS) {
+		netdev_dbg(gmacdev->netdev, "%s: tx flow control enable failed\n", __func__);
+		return;
+	}
+
+	/*
+	 * We set the DFF bit to convert GMAC DMA FIFO behavior from head
+	 * drop to tail drop. This gives us extra room to store frames before
+	 * we start sending pause frames and achieve 0 drops for high rate flows
+	 * with 64 bytes frames.
+	 */
+	nss_gmac_set_reg_bits(gmacdev->dma_base, dma_control,
+				dma_rx_frame_flush);
+
 	nss_gmac_set_reg_bits(gmacdev->mac_base,
-			      gmac_flow_control, gmac_tx_flow_control);
+			      gmac_flow_control, NSS_GMAC_PAUSE_TIME | gmac_tx_flow_control);
 }
 
 /*
@@ -867,8 +882,18 @@ void nss_gmac_tx_pause_disable(struct nss_gmac_dev *gmacdev)
 {
 	netdev_dbg(gmacdev->netdev, "%s: disable Tx flow control\n", __func__);
 
+	if (gmacdev->data_plane_ops->pause_on_off(gmacdev->data_plane_ctx, 0)
+							!= NSS_GMAC_SUCCESS) {
+		netdev_dbg(gmacdev->netdev, "%s: tx flow control disable failed\n", __func__);
+		return;
+	}
+
+	nss_gmac_clear_reg_bits(gmacdev->dma_base, dma_control,
+				dma_rx_frame_flush);
+
 	nss_gmac_clear_reg_bits(gmacdev->mac_base,
-				gmac_flow_control, gmac_tx_flow_control);
+				gmac_flow_control, NSS_GMAC_PAUSE_TIME |
+				gmac_tx_flow_control);
 
 }
 
@@ -882,18 +907,17 @@ void nss_gmac_rx_pause_enable(struct nss_gmac_dev *gmacdev)
 {
 	netdev_dbg(gmacdev->netdev, "%s: enable Rx flow control\n", __func__);
 
-	if (gmacdev->data_plane_ops->pause_on_off(gmacdev->data_plane_ctx, 1)
-							!= NSS_GMAC_SUCCESS) {
-		netdev_dbg(gmacdev->netdev, "%s: rx flow control enable failed\n", __func__);
-		return;
-	}
-
+	/*
+	 * We set the DFF bit to convert GMAC DMA FIFO behavior from head
+	 * drop to tail drop. This gives us extra room to store frames before
+	 * we start sending pause frames and achieve 0 drops for high rate flows
+	 * with 64 bytes frames.
+	 */
 	nss_gmac_set_reg_bits(gmacdev->dma_base, dma_control,
-				dma_rx_frame_flush | dma_en_hw_flow_ctrl |
-				dma_rx_flow_ctrl_act7K | dma_rx_flow_ctrl_deact7K);
+				dma_rx_frame_flush);
 
 	nss_gmac_set_reg_bits(gmacdev->mac_base,
-				gmac_flow_control, NSS_GMAC_PAUSE_TIME | gmac_rx_flow_control);
+				gmac_flow_control, gmac_rx_flow_control);
 }
 
 /*
@@ -996,14 +1020,8 @@ void nss_gmac_rx_pause_disable(struct nss_gmac_dev *gmacdev)
 {
 	netdev_dbg(gmacdev->netdev, "%s: disable Rx flow control\n", __func__);
 
-	if (gmacdev->data_plane_ops->pause_on_off(gmacdev->data_plane_ctx, 0)
-							!= NSS_GMAC_SUCCESS) {
-		netdev_dbg(gmacdev->netdev, "%s: rx flow control disable failed\n", __func__);
-		return;
-	}
-
 	nss_gmac_clear_reg_bits(gmacdev->dma_base,dma_control,
-						dma_en_hw_flow_ctrl);
+				dma_rx_frame_flush);
 
 	nss_gmac_clear_reg_bits(gmacdev->mac_base,
 				gmac_flow_control, gmac_rx_flow_control);
@@ -1036,6 +1054,9 @@ void nss_gmac_config_flow_control(struct nss_gmac_dev *gmacdev)
 		nss_gmac_tx_pause_disable(gmacdev);
 		return;
 	}
+
+	if (!test_bit(__NSS_GMAC_LINKPOLL, &gmacdev->flags))
+		return;
 
 	phyreg = nss_gmac_mii_rd_reg(gmacdev, gmacdev->phy_base, MII_LPA);
 
@@ -1100,6 +1121,15 @@ void nss_gmac_ipc_offload_init(struct nss_gmac_dev *gmacdev)
 	}
 }
 
+/*
+ * Make MMC stats Clear-on-Read
+ * @param[in] pointer to nss_gmac_dev.
+ * @return void
+ */
+void nss_gmac_mmc_stats_cor_enable(struct nss_gmac_dev *gmacdev)
+{
+	nss_gmac_set_reg_bits(gmacdev->mac_base, gmac_mmc_cntrl, gmac_mmc_cor);
+}
 
 /*
  * Mac initialization sequence.
@@ -1152,6 +1182,7 @@ void nss_gmac_mac_init(struct nss_gmac_dev *gmacdev)
 	nss_gmac_unicast_hash_filter_disable(gmacdev);
 
 	nss_gmac_ipc_offload_init(gmacdev);
+	nss_gmac_mmc_stats_cor_enable(gmacdev);
 
 	/* Flow Control Configuration */
 	nss_gmac_unicast_pause_frame_detect_disable(gmacdev);
