@@ -2580,6 +2580,8 @@ ar8xxx_phy_probe(struct phy_device *phydev)
 	struct switch_dev *swdev;
 	int ret;
 
+	__ETHTOOL_DECLARE_LINK_MODE_MASK(mask) = { 0, };
+
 	/* skip PHYs at unused adresses */
 	if (phydev->mdio.addr != 0 && phydev->mdio.addr != 3 && phydev->mdio.addr != 4)
 		return -ENODEV;
@@ -2631,11 +2633,13 @@ found:
 
 	if (phydev->mdio.addr == 0) {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 0, 0)
-		linkmode_zero(phydev->supported);
+		// linkmode_zero(phydev->supported);
 		if (ar8xxx_has_gige(priv))
-			linkmode_set_bit(ETHTOOL_LINK_MODE_1000baseT_Full_BIT, phydev->supported);
+			linkmode_set_bit(ETHTOOL_LINK_MODE_1000baseT_Full_BIT, mask);
 		else
-			linkmode_set_bit(ETHTOOL_LINK_MODE_100baseT_Full_BIT, phydev->supported);
+			linkmode_set_bit(ETHTOOL_LINK_MODE_100baseT_Full_BIT, mask);
+
+		linkmode_and(phydev->supported, phydev->supported, mask);
 		linkmode_copy(phydev->advertising, phydev->supported);
 #else
 		if (ar8xxx_has_gige(priv)) {
@@ -2657,8 +2661,11 @@ found:
 	} else {
 		if (ar8xxx_has_gige(priv)) {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 0, 0)
-			linkmode_zero(phydev->supported);
-			linkmode_set_bit(ETHTOOL_LINK_MODE_1000baseT_Full_BIT, phydev->supported);
+			// linkmode_zero(phydev->supported);
+			linkmode_set_bit(ETHTOOL_LINK_MODE_1000baseT_Full_BIT, mask);
+
+			linkmode_and(phydev->supported, phydev->supported, mask);
+
 			linkmode_copy(phydev->advertising, phydev->supported);
 #else
 			phydev->supported |= SUPPORTED_1000baseT_Full;
@@ -2739,7 +2746,7 @@ static struct phy_driver ar8xxx_phy_driver[] = {
 		.phy_id		= 0x004d0000,
 		.name		= "Atheros AR8216/AR8236/AR8316",
 		.phy_id_mask	= 0xffff0000,
-		.features	= PHY_BASIC_FEATURES,
+		.features	= PHY_GBIT_FEATURES,
 		.probe		= ar8xxx_phy_probe,
 		.remove		= ar8xxx_phy_remove,
 		.detach		= ar8xxx_phy_detach,
