@@ -46,9 +46,21 @@ endef
 $(eval $(call KernelPackage,crypto-aead))
 
 
+define KernelPackage/lib-arc4
+  TITLE:=ARC4 cipher library module
+  HIDDEN:=1f
+  DEPENDS:=@LINUX_5_4
+  FILES:=$(LINUX_DIR)/lib/crypto/libarc4.ko
+  $(call AddDepends/crypto)
+endef
+
+$(eval $(call KernelPackage,lib-arc4))
+
+
 define KernelPackage/crypto-arc4
   TITLE:=ARC4 cipher CryptoAPI module
   KCONFIG:=CONFIG_CRYPTO_ARC4
+  DEPENDS:=+LINUX_5_4:kmod-lib-arc4
   FILES:=$(LINUX_DIR)/crypto/arc4.ko
   AUTOLOAD:=$(call AutoLoad,09,arc4)
   $(call AddDepends/crypto)
