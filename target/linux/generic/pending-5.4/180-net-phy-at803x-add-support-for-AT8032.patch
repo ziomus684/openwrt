@@ -44,8 +44,8 @@ Signed-off-by: Felix Fietkau <nbd@nbd.name>
 +	.get_wol		= at803x_get_wol,
 +	.suspend		= at803x_suspend,
 +	.resume			= at803x_resume,
-+	.features		= PHY_BASIC_FEATURES,
-+	.flags			= PHY_HAS_INTERRUPT,
++	/* PHY_BASIC_FEATURES */
++	.read_status		= at803x_read_status,
 +	.config_aneg		= genphy_config_aneg,
 +	.read_status		= genphy_read_status,
 +	.ack_interrupt		= at803x_ack_interrupt,
