@@ -1,8 +1,7 @@
-From eb514428f75bc67d12ff019c44a8f8ca9f33c54c Mon Sep 17 00:00:00 2001
+From 52c956003a9d5bcae1f445f9dfd42b624adb6e87 Mon Sep 17 00:00:00 2001
 From: Russell King <rmk+kernel@armlinux.org.uk>
-Date: Thu, 21 Nov 2019 17:42:49 +0000
-Subject: [PATCH 653/660] net: phylink: delay MAC configuration for copper SFP
- modules
+Date: Wed, 11 Dec 2019 10:56:45 +0000
+Subject: [PATCH] net: phylink: delay MAC configuration for copper SFP modules
 
 Knowing whether we need to delay the MAC configuration because a module
 may have a PHY is useful to phylink to allow NBASE-T modules to work on
@@ -17,12 +16,14 @@ We move the PHY-based setup a little later, and use the PHYs support
 capabilities rather than the EEPROM parsed capabilities to determine
 whether we can support the PHY.
 
+Reviewed-by: Andrew Lunn <andrew@lunn.ch>
 Signed-off-by: Russell King <rmk+kernel@armlinux.org.uk>
+Signed-off-by: David S. Miller <davem@davemloft.net>
 ---
- drivers/net/phy/phylink.c | 59 +++++++++++++++++++++++++++++++--------
- drivers/net/phy/sfp-bus.c | 28 +++++++++++++++++++
- include/linux/sfp.h       |  7 +++++
- 3 files changed, 83 insertions(+), 11 deletions(-)
+ drivers/net/phy/phylink.c | 53 +++++++++++++++++++++++++++++++--------
+ drivers/net/phy/sfp-bus.c | 28 +++++++++++++++++++++
+ include/linux/sfp.h       |  7 ++++++
+ 3 files changed, 78 insertions(+), 10 deletions(-)
 
 --- a/drivers/net/phy/phylink.c
 +++ b/drivers/net/phy/phylink.c
@@ -102,13 +103,11 @@ Signed-off-by: Russell King <rmk+kernel@armlinux.org.uk>
  }
  
  static void phylink_sfp_module_stop(void *upstream)
-@@ -1828,10 +1845,30 @@ static void phylink_sfp_link_up(void *up
+@@ -1828,10 +1845,26 @@ static void phylink_sfp_link_up(void *up
  static int phylink_sfp_connect_phy(void *upstream, struct phy_device *phy)
  {
  	struct phylink *pl = upstream;
 -	phy_interface_t interface = pl->link_config.interface;
-+	__ETHTOOL_DECLARE_LINK_MODE_MASK(supported);
-+	__ETHTOOL_DECLARE_LINK_MODE_MASK(advertising);
 +	phy_interface_t interface;
  	int ret;
  
@@ -122,11 +121,9 @@ Signed-off-by: Russell King <rmk+kernel@armlinux.org.uk>
 +	 */
 +	phy_support_asym_pause(phy);
 +
-+	ethtool_convert_legacy_u32_to_link_mode(supported, phy->supported);
-+	ethtool_convert_legacy_u32_to_link_mode(advertising, phy->advertising);
-+
 +	/* Do the initial configuration */
-+	ret = phylink_sfp_config(pl, ML_AN_INBAND, supported, advertising);
++	ret = phylink_sfp_config(pl, MLO_AN_INBAND, phy->supported,
++				 phy->advertising);
 +	if (ret < 0)
 +		return ret;
 +
