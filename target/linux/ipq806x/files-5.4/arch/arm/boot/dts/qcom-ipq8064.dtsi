@@ -659,6 +659,14 @@
 			};
 		};
 
+		qcom,rpm-log@10c0c8 {
+			compatible = "qcom,rpm-log";
+			reg = <0x0010c0c8 0x00002000>;
+			qcom,offset-version = <4>;
+			qcom,reg-offsets = <0x00000080 0x000000A0>;
+			qcom,rpm-log-len = <0x1800>;
+		};
+
 		rng@1a500000 {
 			compatible = "qcom,prng";
 			reg = <0x1a500000 0x200>;
@@ -1435,6 +1443,15 @@
 			reset-names = "stmmaceth";
 
 			status = "disabled";
+		};
+
+		watchdog@208a000 {
+			compatible = "qcom,apcs-wdt";
+			reg = <0x0208a000 0x100>;
+			reg-names = "kpss_wdt";
+			interrupt-names = "bark_irq";
+			interrupts = <GIC_SPI 3 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&sleep_clk>;
 		};
 
 		/* Temporary fixed regulator */

@@ -1,0 +1,316 @@
+--- a/drivers/watchdog/qcom-wdt.c
++++ b/drivers/watchdog/qcom-wdt.c
+@@ -12,6 +12,11 @@
+ #include <linux/platform_device.h>
+ #include <linux/watchdog.h>
+ #include <linux/of_device.h>
++#include <linux/utsname.h>
++#include <linux/qcom_scm.h>
++#include <linux/sched/clock.h>
++
++static int in_panic;
+ 
+ enum wdt_reg {
+ 	WDT_RST,
+@@ -42,7 +47,9 @@ static const u32 reg_offset_data_kpss[]
+ 
+ struct qcom_wdt_match_data {
+ 	const u32 *offset;
++	bool named_irq;
+ 	bool pretimeout;
++	bool timer_only;
+ };
+ 
+ struct qcom_wdt {
+@@ -52,15 +59,124 @@ struct qcom_wdt {
+ 	const u32		*layout;
+ };
+ 
++struct qcom_wdt_scm_tlv_msg {
++	unsigned char *msg_buffer;
++	unsigned char *cur_msg_buffer_pos;
++	unsigned int len;
++};
++
++#define CFG_TLV_MSG_OFFSET	2048
++#define QCOM_WDT_SCM_TLV_TYPE_SIZE	1
++#define QCOM_WDT_SCM_TLV_LEN_SIZE	2
++#define QCOM_WDT_SCM_TLV_TYPE_LEN_SIZE	(QCOM_WDT_SCM_TLV_TYPE_SIZE +\
++						QCOM_WDT_SCM_TLV_LEN_SIZE)
++enum {
++	QCOM_WDT_LOG_DUMP_TYPE_INVALID,
++	QCOM_WDT_LOG_DUMP_TYPE_UNAME,
++};
++
+ static void __iomem *wdt_addr(struct qcom_wdt *wdt, enum wdt_reg reg)
+ {
+ 	return wdt->base + wdt->layout[reg];
+-}
++};
++
++static int qcom_wdt_scm_add_tlv(struct qcom_wdt_scm_tlv_msg *scm_tlv_msg,
++			unsigned char type, unsigned int size, const char *data)
++{
++	unsigned char *x = scm_tlv_msg->cur_msg_buffer_pos;
++	unsigned char *y = scm_tlv_msg->msg_buffer + scm_tlv_msg->len;
++
++	if ((x + QCOM_WDT_SCM_TLV_TYPE_LEN_SIZE + size) >= y)
++		return -ENOBUFS;
++
++	x[0] = type;
++	x[1] = size;
++	x[2] = size >> 8;
++
++	memcpy(x + 3, data, size);
++
++	scm_tlv_msg->cur_msg_buffer_pos +=
++		(size + QCOM_WDT_SCM_TLV_TYPE_LEN_SIZE);
++
++	return 0;
++};
++
++static int qcom_wdt_scm_fill_log_dump_tlv(
++			struct qcom_wdt_scm_tlv_msg *scm_tlv_msg)
++{
++	struct new_utsname *uname;
++	int ret;
++
++	uname = utsname();
++
++	ret = qcom_wdt_scm_add_tlv(scm_tlv_msg,
++			QCOM_WDT_LOG_DUMP_TYPE_UNAME,
++			sizeof(*uname),
++			(unsigned char *)uname);
++
++	if (ret)
++		return ret;
++
++	if (scm_tlv_msg->cur_msg_buffer_pos >=
++		scm_tlv_msg->msg_buffer + scm_tlv_msg->len)
++		return -ENOBUFS;
++
++	*scm_tlv_msg->cur_msg_buffer_pos++ = QCOM_WDT_LOG_DUMP_TYPE_INVALID;
++
++	return 0;
++};
+ 
+ static inline
+ struct qcom_wdt *to_qcom_wdt(struct watchdog_device *wdd)
+ {
+ 	return container_of(wdd, struct qcom_wdt, wdd);
++};
++
++static int panic_prep_restart(struct notifier_block *this,
++				unsigned long event, void *ptr)
++{
++	in_panic = 1;
++	return 0;
++};
++
++static struct notifier_block panic_blk = {
++	.notifier_call  = panic_prep_restart,
++};
++
++static long qcom_wdt_configure_bark_dump(void *arg)
++{
++	void *scm_regsave;
++	struct qcom_wdt_scm_tlv_msg tlv_msg;
++
++	int ret;
++
++	scm_regsave = (void *)__get_free_page(GFP_KERNEL);
++	if (!scm_regsave)
++		return -ENOMEM;
++
++	ret = qcom_scm_regsave(SCM_SVC_UTIL, SCM_CMD_SET_REGSAVE,
++						scm_regsave);
++	if (ret) {
++		pr_err("Setting register save address failed.\n"
++			"Registers won't be dumped on a dog bite\n");
++		return ret;
++	}
++
++	/* Initialize the tlv and fill all the details */
++	tlv_msg.msg_buffer = scm_regsave + CFG_TLV_MSG_OFFSET;
++	tlv_msg.cur_msg_buffer_pos = tlv_msg.msg_buffer;
++	tlv_msg.len = PAGE_SIZE - CFG_TLV_MSG_OFFSET;
++
++	ret = qcom_wdt_scm_fill_log_dump_tlv(&tlv_msg);
++
++	/* if failed, we still return 0 because it should not
++	 * affect the boot flow. The return value 0 does not
++	 * necessarily indicate success in this function.
++	 */
++	if (ret)
++		pr_err("log dump initialization failed\n");
++
++	return 0;
+ }
+ 
+ static inline int qcom_get_enable(struct watchdog_device *wdd)
+@@ -76,6 +192,35 @@ static inline int qcom_get_enable(struct
+ static irqreturn_t qcom_wdt_isr(int irq, void *arg)
+ {
+ 	struct watchdog_device *wdd = arg;
++	struct qcom_wdt *wdt = to_qcom_wdt(wdd);
++	unsigned long nanosec_rem;
++	unsigned long long t = sched_clock();
++
++	nanosec_rem = do_div(t, 1000000000);
++	pr_info("Watchdog bark! Now = %lu.%06lu\n", (unsigned long) t,
++							nanosec_rem / 1000);
++	pr_info("Causing a watchdog bite!");
++	writel(0, wdt_addr(wdt, WDT_EN));
++	writel(1, wdt_addr(wdt, WDT_BITE_TIME));
++	mb(); /* Avoid unpredictable behaviour in concurrent executions */
++	pr_info("Configuring Watchdog Timer\n");
++	writel(1, wdt_addr(wdt, WDT_RST));
++	writel(1, wdt_addr(wdt, WDT_EN));
++	mb(); /* Make sure the above sequence hits hardware before Reboot. */
++	pr_info("Waiting for Reboot\n");
++
++	mdelay(1);
++	pr_err("Wdog - CTL: 0x%x, BARK TIME: 0x%x, BITE TIME: 0x%x",
++		readl(wdt_addr(wdt, WDT_EN)),
++		readl(wdt_addr(wdt, WDT_BARK_TIME)),
++		readl(wdt_addr(wdt, WDT_BITE_TIME)));
++
++	return IRQ_HANDLED;
++}
++
++static irqreturn_t qcom_wdt_isr_pt(int irq, void *arg)
++{
++	struct watchdog_device *wdd = arg;
+ 
+ 	watchdog_notify_pretimeout(wdd);
+ 
+@@ -139,8 +284,14 @@ static int qcom_wdt_restart(struct watch
+ 
+ 	writel(0, wdt_addr(wdt, WDT_EN));
+ 	writel(1, wdt_addr(wdt, WDT_RST));
+-	writel(timeout, wdt_addr(wdt, WDT_BARK_TIME));
+-	writel(timeout, wdt_addr(wdt, WDT_BITE_TIME));
++	if (in_panic) {
++		writel(timeout, wdt_addr(wdt, WDT_BARK_TIME));
++		writel(2 * timeout, wdt_addr(wdt, WDT_BITE_TIME));
++	} else {
++		writel(5 * timeout, wdt_addr(wdt, WDT_BARK_TIME));
++		writel(timeout, wdt_addr(wdt, WDT_BITE_TIME));
++	}
++
+ 	writel(QCOM_WDT_ENABLE, wdt_addr(wdt, WDT_EN));
+ 
+ 	/*
+@@ -185,13 +336,21 @@ static void qcom_clk_disable_unprepare(v
+ }
+ 
+ static const struct qcom_wdt_match_data match_data_apcs_tmr = {
++	.timer_only = true,
++};
++
++static const struct qcom_wdt_match_data match_data_apcs_wdt = {
+ 	.offset = reg_offset_data_apcs_tmr,
++	.named_irq = true,
+ 	.pretimeout = false,
++	.timer_only = false,
+ };
+ 
+ static const struct qcom_wdt_match_data match_data_kpss = {
+ 	.offset = reg_offset_data_kpss,
++	.named_irq = false,
+ 	.pretimeout = true,
++	.timer_only = false,
+ };
+ 
+ static int qcom_wdt_probe(struct platform_device *pdev)
+@@ -204,6 +363,7 @@ static int qcom_wdt_probe(struct platfor
+ 	u32 percpu_offset;
+ 	int irq, ret;
+ 	struct clk *clk;
++	resource_size_t size;
+ 
+ 	data = of_device_get_match_data(dev);
+ 	if (!data) {
+@@ -226,7 +386,8 @@ static int qcom_wdt_probe(struct platfor
+ 	res->start += percpu_offset;
+ 	res->end += percpu_offset;
+ 
+-	wdt->base = devm_ioremap_resource(dev, res);
++	size = resource_size(res);
++	wdt->base = devm_ioremap(dev, res->start, size);
+ 	if (IS_ERR(wdt->base))
+ 		return PTR_ERR(wdt->base);
+ 
+@@ -245,6 +406,9 @@ static int qcom_wdt_probe(struct platfor
+ 	if (ret)
+ 		return ret;
+ 
++	if (data->timer_only)
++		return 0;
++
+ 	/*
+ 	 * We use the clock rate to calculate the max timeout, so ensure it's
+ 	 * not zero to avoid a divide-by-zero exception.
+@@ -261,16 +425,26 @@ static int qcom_wdt_probe(struct platfor
+ 	}
+ 
+ 	/* check if there is pretimeout support */
+-	irq = platform_get_irq_optional(pdev, 0);
+-	if (data->pretimeout && irq > 0) {
+-		ret = devm_request_irq(dev, irq, qcom_wdt_isr,
+-				       IRQF_TRIGGER_RISING,
+-				       "wdt_bark", &wdt->wdd);
+-		if (ret)
+-			return ret;
+-
+-		wdt->wdd.info = &qcom_wdt_pt_info;
+-		wdt->wdd.pretimeout = 1;
++	if (data->named_irq)
++		irq = platform_get_irq_byname_optional(pdev, "bark_irq");
++	else
++		irq = platform_get_irq_optional(pdev, 0);
++
++	if (irq > 0) {
++		if (data->pretimeout) {
++			ret = devm_request_irq(dev, irq, qcom_wdt_isr_pt,
++					       0, "wdt_bark", &wdt->wdd);
++			if (ret)
++				return ret;
++			wdt->wdd.info = &qcom_wdt_pt_info;
++			wdt->wdd.pretimeout = 1;
++		} else {
++			ret = devm_request_irq(dev, irq, qcom_wdt_isr,
++					       0, "wdt_bark", &wdt->wdd);
++			if (ret)
++				return ret;
++			wdt->wdd.info = &qcom_wdt_info;
++		}
+ 	} else {
+ 		if (irq == -EPROBE_DEFER)
+ 			return -EPROBE_DEFER;
+@@ -278,6 +452,8 @@ static int qcom_wdt_probe(struct platfor
+ 		wdt->wdd.info = &qcom_wdt_info;
+ 	}
+ 
++	work_on_cpu(0, qcom_wdt_configure_bark_dump, NULL);
++
+ 	wdt->wdd.ops = &qcom_wdt_ops;
+ 	wdt->wdd.min_timeout = 1;
+ 	wdt->wdd.max_timeout = 0x10000000U / wdt->rate;
+@@ -299,6 +475,8 @@ static int qcom_wdt_probe(struct platfor
+ 	if (ret)
+ 		return ret;
+ 
++	atomic_notifier_chain_register(&panic_notifier_list, &panic_blk);
++
+ 	platform_set_drvdata(pdev, wdt);
+ 	return 0;
+ }
+@@ -328,6 +506,7 @@ static SIMPLE_DEV_PM_OPS(qcom_wdt_pm_ops
+ static const struct of_device_id qcom_wdt_of_table[] = {
+ 	{ .compatible = "qcom,kpss-timer", .data = &match_data_apcs_tmr },
+ 	{ .compatible = "qcom,scss-timer", .data = &match_data_apcs_tmr },
++	{ .compatible = "qcom,apcs-wdt", .data = &match_data_apcs_wdt },
+ 	{ .compatible = "qcom,kpss-wdt", .data = &match_data_kpss },
+ 	{ },
+ };

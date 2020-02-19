@@ -1,0 +1,76 @@
+--- a/drivers/firmware/qcom_scm.c
++++ b/drivers/firmware/qcom_scm.c
+@@ -171,6 +171,19 @@ int qcom_scm_hdcp_req(struct qcom_scm_hd
+ }
+ EXPORT_SYMBOL(qcom_scm_hdcp_req);
+ 
++
++int qcom_scm_regsave(u32 svc_id, u32 cmd_id, void *scm_regsave)
++{
++	int ret = qcom_scm_clk_enable();
++
++	if (ret)
++		return ret;
++	ret = __qcom_scm_regsave(__scm->dev, svc_id, cmd_id, scm_regsave);
++	qcom_scm_clk_disable();
++	return ret;
++
++}
++EXPORT_SYMBOL(qcom_scm_regsave);
+ /**
+  * qcom_scm_pas_supported() - Check if the peripheral authentication service is
+  *			      available for the given peripherial
+--- a/drivers/firmware/qcom_scm.h
++++ b/drivers/firmware/qcom_scm.h
+@@ -57,6 +57,7 @@ extern int  __qcom_scm_pas_mem_setup(str
+ extern int  __qcom_scm_pas_auth_and_reset(struct device *dev, u32 peripheral);
+ extern int  __qcom_scm_pas_shutdown(struct device *dev, u32 peripheral);
+ extern int  __qcom_scm_pas_mss_reset(struct device *dev, bool reset);
++extern int  __qcom_scm_regsave(struct device *dev, u32 svc_id, u32 cmd_id, void *scm_regsave);
+ 
+ /* common error codes */
+ #define QCOM_SCM_V2_EBUSY	-12
+--- a/drivers/firmware/qcom_scm-32.c
++++ b/drivers/firmware/qcom_scm-32.c
+@@ -442,6 +442,27 @@ int __qcom_scm_hdcp_req(struct device *d
+ 		req, req_cnt * sizeof(*req), resp, sizeof(*resp));
+ }
+ 
++int __qcom_scm_regsave(struct device *dev,
++				u32 svc_id, u32 cmd_id, void *scm_regsave)
++{
++	long ret;
++	struct {
++		unsigned addr;
++		int len;
++	} cmd_buf;
++
++	if (scm_regsave) {
++		cmd_buf.addr = virt_to_phys(scm_regsave);
++		cmd_buf.len = PAGE_SIZE;
++		ret = qcom_scm_call(dev, svc_id, cmd_id, &cmd_buf,
++				sizeof(cmd_buf), NULL, 0);
++	} else {
++		ret = -EINVAL;
++	}
++
++	return ret;
++}
++
+ void __qcom_scm_init(void)
+ {
+ }
+--- a/include/linux/qcom_scm.h
++++ b/include/linux/qcom_scm.h
+@@ -54,6 +54,11 @@ extern int qcom_scm_assign_mem(phys_addr
+ 			       unsigned int dest_cnt);
+ extern void qcom_scm_cpu_power_down(u32 flags);
+ extern u32 qcom_scm_get_version(void);
++#define SCM_SVC_UTIL                0x3
++#define SCM_CMD_SET_REGSAVE        0x2
++
++extern int qcom_scm_regsave(u32 svc_id, u32 cmd_id, void *);
++
+ extern int qcom_scm_set_remote_state(u32 state, u32 id);
+ extern int qcom_scm_restore_sec_cfg(u32 device_id, u32 spare);
+ extern int qcom_scm_iommu_secure_ptbl_size(u32 spare, size_t *size);
