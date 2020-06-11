@@ -3,8 +3,8 @@
 #include <dt-bindings/input/input.h>
 
 / {
-	model = "Netgear Nighthawk X4S R7800";
-	compatible = "netgear,r7800", "qcom,ipq8065", "qcom,ipq8064";
+	model = "Netgear XR500";
+	compatible = "netgear,xr500", "qcom,ipq8065", "qcom,ipq8064";
 
 	memory@0 {
 		reg = <0x42000000 0x1e000000>;
@@ -77,48 +77,48 @@
 		pinctrl-names = "default";
 
 		power_white: power_white {
-			label = "r7800:white:power";
+			label = "xr500:white:power";
 			gpios = <&qcom_pinmux 53 GPIO_ACTIVE_HIGH>;
 			default-state = "keep";
 		};
 
 		power_amber: power_amber {
-			label = "r7800:amber:power";
+			label = "xr500:amber:power";
 			gpios = <&qcom_pinmux 9 GPIO_ACTIVE_HIGH>;
 		};
 
 		wan_white {
-			label = "r7800:white:wan";
+			label = "xr500:white:wan";
 			gpios = <&qcom_pinmux 22 GPIO_ACTIVE_HIGH>;
 		};
 
 		wan_amber {
-			label = "r7800:amber:wan";
+			label = "xr500:amber:wan";
 			gpios = <&qcom_pinmux 23 GPIO_ACTIVE_HIGH>;
 		};
 
 		usb1 {
-			label = "r7800:white:usb1";
-			gpios = <&qcom_pinmux 7 GPIO_ACTIVE_HIGH>;
-		};
-
-		usb2 {
-			label = "r7800:white:usb2";
+			label = "xr500:white:usb1";
 			gpios = <&qcom_pinmux 8 GPIO_ACTIVE_HIGH>;
 		};
 
-		esata {
-			label = "r7800:white:esata";
+		usb2 {
+			label = "xr500:white:usb2";
 			gpios = <&qcom_pinmux 26 GPIO_ACTIVE_HIGH>;
 		};
 
+		esata {
+			label = "xr500:white:esata";
+			gpios = <&qcom_pinmux 7 GPIO_ACTIVE_HIGH>;
+		};
+
 		wifi {
-			label = "r7800:white:wifi";
+			label = "xr500:white:wifi";
 			gpios = <&qcom_pinmux 64 GPIO_ACTIVE_HIGH>;
 		};
 
 		wps {
-			label = "r7800:white:wps";
+			label = "xr500:white:wps";
 			gpios = <&qcom_pinmux 24 GPIO_ACTIVE_HIGH>;
 		};
 	};
@@ -296,11 +296,11 @@
 	};
 
 	/*
-	* The i2c device on gsbi4 should not be enabled.
-	* On ipq806x designs gsbi4 i2c is meant for exclusive
-	* RPM usage. Turning this on in kernel manifests as
-	* i2c failure for the RPM.
-	*/
+		* The i2c device on gsbi4 should not be enabled.
+		* On ipq806x designs gsbi4 i2c is meant for exclusive
+		* RPM usage. Turning this on in kernel manifests as
+		* i2c failure for the RPM.
+		*/
 };
 
 &nand_controller {
@@ -359,12 +359,12 @@
 
 			ubi@1880000 {
 				label = "ubi";
-				reg = <0x1880000 0x6080000>;
+				reg = <0x1880000 0xce00000>;
 			};
 
-			reserve@7900000 {
+			reserve@e680000 {
 				label = "reserve";
-				reg = <0x7900000 0x0700000>;
+				reg = <0xe680000 0x780000>;
 				read-only;
 			};
 		};
@@ -417,94 +417,15 @@
 	};
 };
 
-// &mdio0 {
-// 	status = "okay";
-
-// 	pinctrl-0 = <&mdio0_pins>;
-// 	pinctrl-names = "default";
-
-// 	switch@10 {
-// 		compatible = "qca,qca8337";
-// 		#address-cells = <1>;
-// 		#size-cells = <0>;
-// 		reg = <0x10>;
-
-// 		ports {
-// 			#address-cells = <1>;
-// 			#size-cells = <0>;
-
-// 			port@0 {
-// 				reg = <0>;
-// 				label = "cpu";
-// 				ethernet = <&gmac1>;
-// 				phy-mode = "rgmii-id";
-
-// 				fixed-link {
-// 					speed = <1000>;
-// 					full-duplex;
-// 				};
-// 			};
-
-// 			port@1 {
-// 				reg = <1>;
-// 				label = "lan1";
-// 			};
-
-// 			port@2 {
-// 				reg = <2>;
-// 				label = "lan2";
-// 			};
-
-// 			port@3 {
-// 				reg = <3>;
-// 				label = "lan3";
-// 			};
-
-// 			port@4 {
-// 				reg = <4>;
-// 				label = "lan4";
-// 			};
-
-// 			port@5 {
-// 				reg = <5>;
-// 				label = "wan";
-// 			};
-
-// 			/*
-// 			port@6 {
-// 					reg = <0>;
-// 					label = "cpu";
-// 					ethernet = <&gmac2>;
-// 					phy-mode = "rgmii";
-
-// 					fixed-link {
-// 							speed = <1000>;
-// 							full-duplex;
-// 							pause;
-// 							asym-pause;
-// 					};
-// 			};
-// 			*/
-// 		};
-// 	};
-// };
-
 &gmac1 {
 	status = "okay";
-	compatible = "qcom,nss-gmac";
-	reg = <0x37200000 0x200000>;
-	interrupts = <GIC_SPI 223 IRQ_TYPE_LEVEL_HIGH>;
 	phy-mode = "rgmii";
 	qcom,id = <1>;
-	qcom,pcs-chanid = <0>;
-	qcom,phy-mdio-addr = <4>;
-	qcom,poll-required = <0>;
-	qcom,rgmii-delay = <1>;
+	qcom,phy_mdio_addr = <4>;
+	qcom,poll_required = <0>;
+	qcom,rgmii_delay = <1>;
 	qcom,phy_mii_type = <0>;
 	qcom,emulation = <0>;
-	qcom,forced-speed = <1000>;
-	qcom,forced-duplex = <1>;
-	qcom,socver = <0>;
 	qcom,irq = <255>;
 	mdiobus = <&mdio0>;
 
@@ -521,20 +442,13 @@
 
 &gmac2 {
 	status = "okay";
-	compatible = "qcom,nss-gmac";
-	reg = <0x37400000 0x200000>;
-	interrupts = <GIC_SPI 226 IRQ_TYPE_LEVEL_HIGH>;
 	phy-mode = "sgmii";
 	qcom,id = <2>;
-	qcom,pcs-chanid = <1>;
-	qcom,phy-mdio-addr = <0>;	/* none */
-	qcom,poll-required = <0>;	/* no polling */
-	qcom,rgmii-delay = <0>;
+	qcom,phy_mdio_addr = <0>;	/* none */
+	qcom,poll_required = <0>;	/* no polling */
+	qcom,rgmii_delay = <0>;
 	qcom,phy_mii_type = <1>;
 	qcom,emulation = <0>;
-	qcom,forced-speed = <1000>;
-	qcom,forced-duplex = <1>;
-	qcom,socver = <0>;
 	qcom,irq = <258>;
 	mdiobus = <&mdio0>;
 
@@ -575,39 +489,9 @@
 
 &pcie0 {
 	status = "okay";
-
-	bridge@0,0 {
-		reg = <0x00000000 0 0 0 0>;
-		#address-cells = <3>;
-		#size-cells = <2>;
-		ranges;
-
-		wifi@1,0 {
-			compatible = "pci168c,0046";
-			reg = <0x00010000 0 0 0 0>;
-
-			mtd-mac-address = <&art 6>;
-			mtd-mac-address-increment = <(1)>;
-		};
-	};
 };
 
 &pcie1 {
 	status = "okay";
 	max-link-speed = <1>;
-
-	bridge@0,0 {
-		reg = <0x00000000 0 0 0 0>;
-		#address-cells = <3>;
-		#size-cells = <2>;
-		ranges;
-
-		wifi@1,0 {
-			compatible = "pci168c,0046";
-			reg = <0x00010000 0 0 0 0>;
-
-			mtd-mac-address = <&art 6>;
-			mtd-mac-address-increment = <(2)>;
-		};
-	};
 };
