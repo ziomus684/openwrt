@@ -51,11 +51,6 @@ define Build/elx-header
 	rm -rf $(KDIR)/tmp/$(DEVICE_NAME).header
 endef
 
-define Build/fonfxcimage
-	uimage_padhdr -i $@ -o $@.new
-	mv $@.new $@
-endef
-
 define Build/jcg-header
 	$(STAGING_DIR_HOST)/bin/jcgimage -v $(1) \
 		$(if $(JCG_MAXSIZE), -m $$(($(subst k, * 1024,$(JCG_MAXSIZE)))),) \
@@ -111,6 +106,12 @@ define Build/poray-header
 	mv $@.new $@
 endef
 
+define Build/ravpower-wd009-factory
+	mkimage -A mips -T standalone -C none -a 0x80010000 -e 0x80010000 -n "OpenWrt Bootloader" -d $(UBOOT_PATH) $@.new
+	cat $@ >> $@.new
+	@mv $@.new $@
+endef
+
 define Build/relocate-kernel
 	rm -rf $@.relocate
 	$(CP) ../../generic/image/relocate $@.relocate
@@ -143,6 +144,11 @@ define Build/trx
 		-m $$(($(subst k, * 1024,$(IMAGE_SIZE)))) \
 		-f $(IMAGE_KERNEL) \
 		-a 4 -f $(IMAGE_ROOTFS)
+endef
+
+define Build/uimage-padhdr
+	uimage_padhdr $(if $(1),-l $(1)) -i $@ -o $@.new
+	mv $@.new $@
 endef
 
 define Build/umedia-header
