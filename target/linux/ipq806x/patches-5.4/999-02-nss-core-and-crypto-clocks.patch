@@ -139,7 +139,7 @@
  	{ }
  };
  
-@@ -2753,6 +2814,319 @@ static struct clk_dyn_rcg ubi32_core2_sr
+@@ -2753,6 +2814,324 @@ static struct clk_dyn_rcg ubi32_core2_sr
  	},
  };
  
@@ -435,6 +435,10 @@
 +
 +	return clk_dyn_rcg_ops.set_parent(&ubi32_core2_src_clk.clkr.hw, i);
 +}
++static struct clk_hw *nss_core_clk_get_safe_parent(struct clk_hw *hw)
++{
++	return clk_hw_get_parent_by_index(hw, gcc_ipq806x_nss_safe_parent);
++}
 +
 +static const struct clk_ops clk_ops_nss_core = {
 +	.set_rate = nss_core_clk_set_rate,
@@ -443,6 +447,7 @@
 +	.recalc_rate = nss_core_clk_recalc_rate,
 +	.get_parent = nss_core_clk_get_parent,
 +	.set_parent = nss_core_clk_set_parent,
++	.get_safe_parent = nss_core_clk_get_safe_parent,
 +};
 +
 +/* Virtual clock for nss core clocks */
