@@ -1,4 +1,4 @@
-From 343bcc5a88573819bae2277245e64dc7d831af44 Mon Sep 17 00:00:00 2001
+From c82c991a9cd4a047d0544a9fb4186291eb40d60b Mon Sep 17 00:00:00 2001
 From: Ansuel Smith <ansuelsmth@gmail.com>
 Date: Sat, 22 Feb 2020 17:01:53 +0100
 Subject: [PATCH 3/6] clk: qcom: add Fab Scaling support
@@ -52,7 +52,7 @@ index 656a87e629d4..1f5fb0ed8abe 100644
  obj-$(CONFIG_APQ_GCC_8084) += gcc-apq8084.o
 diff --git a/drivers/clk/qcom/fab_scaling.c b/drivers/clk/qcom/fab_scaling.c
 new file mode 100644
-index 000000000000..74fcebe77aa2
+index 000000000000..63d01ae3993f
 --- /dev/null
 +++ b/drivers/clk/qcom/fab_scaling.c
 @@ -0,0 +1,214 @@
@@ -95,17 +95,17 @@ index 000000000000..74fcebe77aa2
 +	u32 fab_freq_nominal;
 +	struct clk *apps_fab_clk;
 +	struct clk *ddr_fab_clk;
++	struct fab_scaling_info consumers[MAX_CONSUMER];
 +};
 +
-+static struct qcom_fab_scaling_data *drv_data;
-+static struct fab_scaling_info consumers[MAX_CONSUMER];
++static struct qcom_fab_scaling_data drv_data;
 +
 +int scale_fabrics(unsigned long max_freq, enum fab_consumers type)
 +{
-+	struct clk *apps_fab_clk = drv_data->apps_fab_clk,
-+		   *ddr_fab_clk = drv_data->ddr_fab_clk;
++	struct clk *apps_fab_clk = drv_data.apps_fab_clk,
++		   *ddr_fab_clk = drv_data.ddr_fab_clk;
 +	unsigned long target_freq, cur_freq;
-+	unsigned int idle_freq = consumers[type].idle_freq, old_max_clk;
++	unsigned int idle_freq = drv_data.consumers[type].idle_freq, old_max_clk;
 +	int i, ret;
 +
 +	/* Skip fab scaling if the driver is not ready */
@@ -115,16 +115,16 @@ index 000000000000..74fcebe77aa2
 +	if (idle_freq == 0)
 +		return 0;
 +
-+	if (max_freq != consumers[type].old_max_clk)
-+		consumers[type].old_max_clk = max_freq;
++	if (max_freq != drv_data.consumers[type].old_max_clk)
++		drv_data.consumers[type].old_max_clk = max_freq;
 +
-+	target_freq = drv_data->fab_freq_nominal;
++	target_freq = drv_data.fab_freq_nominal;
 +
 +	for (i = 0; i < MAX_CONSUMER; i++) {
-+		idle_freq = consumers[i].idle_freq;
-+		old_max_clk = consumers[i].old_max_clk;
++		idle_freq = drv_data.consumers[i].idle_freq;
++		old_max_clk = drv_data.consumers[i].old_max_clk;
 +		if (idle_freq != 0 && old_max_clk > idle_freq) {
-+			target_freq = drv_data->fab_freq_high;
++			target_freq = drv_data.fab_freq_high;
 +			break;
 +		}
 +	}
@@ -149,12 +149,12 @@ index 000000000000..74fcebe77aa2
 +	if (idle_freq == 0)
 +		return -1;
 +
-+	if (consumers[type].idle_freq != 0) {
++	if (drv_data.consumers[type].idle_freq != 0) {
 +		pr_err("Fab consumer already registered!\n");
 +		return -1;
 +	}
 +
-+	consumers[type].idle_freq = idle_freq;
++	drv_data.consumers[type].idle_freq = idle_freq;
 +
 +	return 0;
 +}
@@ -162,7 +162,7 @@ index 000000000000..74fcebe77aa2
 +
 +int fab_scaling_unregister(enum fab_consumers type)
 +{
-+	consumers[type].idle_freq = 0;
++	drv_data.consumers[type].idle_freq = 0;
 +	return 0;
 +}
 +EXPORT_SYMBOL(fab_scaling_unregister);
@@ -171,27 +171,23 @@ index 000000000000..74fcebe77aa2
 +{
 +	struct device_node *np = pdev->dev.of_node;
 +	struct clk *apps_fab_clk, *ddr_fab_clk;
-+	int ret;
++	int ret = 0;
 +
 +	if (!np)
 +		return -ENODEV;
 +
-+	drv_data = kzalloc(sizeof(*drv_data), GFP_KERNEL);
-+	if (!drv_data)
-+		return -ENOMEM;
-+
 +	if (of_property_read_u32(np, "fab_freq_high",
-+				 &drv_data->fab_freq_high)) {
++				 &drv_data.fab_freq_high)) {
 +		dev_err(&pdev->dev,
 +			"FABRICS turbo freq not found. Using defaults...\n");
-+		drv_data->fab_freq_high = 533000000;
++		drv_data.fab_freq_high = 533000000;
 +	}
 +
 +	if (of_property_read_u32(np, "fab_freq_nominal",
-+				 &drv_data->fab_freq_nominal)) {
++				 &drv_data.fab_freq_nominal)) {
 +		dev_err(&pdev->dev,
 +			"FABRICS nominal freq not found. Using defaults...\n");
-+		drv_data->fab_freq_nominal = 400000000;
++		drv_data.fab_freq_nominal = 400000000;
 +	}
 +
 +	apps_fab_clk = devm_clk_get(&pdev->dev, "apps-fab-clk");
@@ -210,8 +206,8 @@ index 000000000000..74fcebe77aa2
 +	}
 +
 +	clk_prepare_enable(apps_fab_clk);
-+	clk_set_rate(apps_fab_clk, drv_data->fab_freq_high);
-+	drv_data->apps_fab_clk = apps_fab_clk;
++	clk_set_rate(apps_fab_clk, drv_data.fab_freq_high);
++	drv_data.apps_fab_clk = apps_fab_clk;
 +
 +	ddr_fab_clk = devm_clk_get(&pdev->dev, "ddr-fab-clk");
 +	ret = PTR_ERR_OR_ZERO(ddr_fab_clk);
@@ -229,19 +225,23 @@ index 000000000000..74fcebe77aa2
 +		goto err;
 +	}
 +
-+	clk_set_rate(ddr_fab_clk, drv_data->fab_freq_high);
 +	clk_prepare_enable(ddr_fab_clk);
-+	drv_data->ddr_fab_clk = ddr_fab_clk;
++	clk_set_rate(ddr_fab_clk, drv_data.fab_freq_high);
++	drv_data.ddr_fab_clk = ddr_fab_clk;
 +
-+	return 0;
 +err:
-+	kfree(drv_data);
 +	return ret;
 +}
 +
 +static int ipq806x_fab_scaling_remove(struct platform_device *pdev)
 +{
-+	kfree(drv_data);
++	int i;
++
++	for (i = 0; i < MAX_CONSUMER; i++) {
++		drv_data.consumers[i].idle_freq = 0;
++		drv_data.consumers[i].old_max_clk = 0;
++	}
++
 +	return 0;
 +}
 +
