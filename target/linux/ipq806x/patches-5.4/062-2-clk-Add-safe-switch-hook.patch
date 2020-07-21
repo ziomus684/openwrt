@@ -2,36 +2,37 @@ diff --git a/drivers/clk/clk.c b/drivers/clk/clk.c
 index 255ec8c92919..b23e2b9c9102 100644
 --- a/drivers/clk/clk.c
 +++ b/drivers/clk/clk.c
-@@ -38,9 +38,11 @@ struct clk {
+@@ -64,9 +64,12 @@ struct clk_core {
  	struct clk_parent_map	*parents;
  	u8			num_parents;
  	u8			new_parent_index;
 +	u8			safe_parent_index;
  	unsigned long		rate;
  	unsigned long		req_rate;
++	unsigned long		old_rate;
  	unsigned long		new_rate;
 +	struct clk_core		*safe_parent;
  	struct clk_core		*new_parent;
  	struct clk_core		*new_child;
  	unsigned long		flags;
-@@ -1368,6 +1368,7 @@ static void clk_calc_subtree(struct clk *clk, unsigned long new_rate,
+@@ -1860,6 +1861,7 @@ static void clk_calc_subtree(struct clk_core *core, unsigned long new_rate,
  			     struct clk_core *new_parent, u8 p_index)
  {
  	struct clk_core *child;
-+	struct clk_core *parent;
++	struct clk_hw *parent;
  
  	core->new_rate = new_rate;
  	core->new_parent = new_parent;
-@@ -1377,6 +1378,17 @@ static void clk_calc_subtree(struct clk *clk, unsigned long new_rate,
+@@ -1869,6 +1871,17 @@ static void clk_calc_subtree(struct clk_core *core, unsigned long new_rate,
  	if (new_parent && new_parent != core->parent)
  		new_parent->new_child = core;
  
 +	if (core->ops->get_safe_parent) {
 +		parent = core->ops->get_safe_parent(core->hw);
 +		if (parent) {
-+			p_index = clk_fetch_parent_index(core, parent);
++			p_index = clk_fetch_parent_index(core, parent->core);
 +			core->safe_parent_index = p_index;
-+			core->safe_parent = parent;
++			core->safe_parent = parent->core;
 +		}
 +	} else {
 +		core->safe_parent = NULL;
@@ -40,8 +41,8 @@ index 255ec8c92919..b23e2b9c9102 100644
  	hlist_for_each_entry(child, &core->children, child_node) {
  		child->new_rate = clk_recalc(child, new_rate);
  		clk_calc_subtree(child, child->new_rate, NULL, 0);
-@@ -1459,14 +1471,42 @@ out:
- static struct clk *clk_propagate_rate_change(struct clk *clk, unsigned long event)
+@@ -1970,14 +1983,43 @@ static struct clk_core *clk_propagate_rate_change(struct clk_core *core,
+ 						  unsigned long event)
  {
  	struct clk_core *child, *tmp_clk, *fail_clk = NULL;
 +	struct clk_core *old_parent;
@@ -55,6 +56,7 @@ index 255ec8c92919..b23e2b9c9102 100644
 +	case PRE_RATE_CHANGE:
 +		if (core->safe_parent)
 +			core->ops->set_parent(core->hw, core->safe_parent_index);
++		core->old_rate = core->rate;
 +		break;
 +	case POST_RATE_CHANGE:
 +		if (core->safe_parent) {
@@ -79,14 +81,14 @@ index 255ec8c92919..b23e2b9c9102 100644
  	if (core->notifier_count) {
 -		ret = __clk_notify(core, event, core->rate, core->new_rate);
 -		if (ret & NOTIFY_STOP_MASK)
-+		if (event != POST_RATE_CHANGE)
-+			ret = __clk_notify(core, event, core->rate,
++		if (event != POST_RATE_CHANGE || core->old_rate != core->rate)
++			ret = __clk_notify(core, event, core->old_rate,
 +					   core->new_rate);
 +		if (ret & NOTIFY_STOP_MASK && event != POST_RATE_CHANGE)
  			fail_clk = core;
  	}
  
-@@ -1508,7 +1548,8 @@ static void clk_change_rate(struct clk *clk)
+@@ -2036,7 +2077,8 @@ static void clk_change_rate(struct clk_core *core)
  		clk_enable_unlock(flags);
  	}
  
@@ -96,7 +98,7 @@ index 255ec8c92919..b23e2b9c9102 100644
  		old_parent = __clk_set_parent_before(core, core->new_parent);
  		trace_clk_set_parent(core, core->new_parent);
  
-@@ -1528,9 +1569,6 @@ static void clk_change_rate(struct clk *clk)
+@@ -2077,9 +2119,6 @@ static void clk_change_rate(struct clk_core *core)
  	if (core->flags & CLK_OPS_PARENT_ENABLE)
  		clk_core_disable_unprepare(parent);
  
@@ -106,14 +108,15 @@ index 255ec8c92919..b23e2b9c9102 100644
  	if (core->flags & CLK_RECALC_NEW_RATES)
  		(void)clk_calc_new_rates(core, core->new_rate);
  
-@@ -1604,6 +1642,7 @@ int clk_set_rate(struct clk *clk, unsigned long rate)
- 	if (clk->exclusive_count)
- 		clk_core_rate_protect(clk->core);
+@@ -2209,6 +2209,8 @@ static int clk_core_set_rate_nolock(struct clk_core *core,
+ 	/* change the rates */
+ 	clk_change_rate(top);
  
 +	clk_propagate_rate_change(top, POST_RATE_CHANGE);
- 
- 	clk_prepare_unlock();
- 
++
+ 	core->req_rate = req_rate;
+ err:
+ 	clk_pm_runtime_put(core);
 diff --git a/include/linux/clk-provider.h b/include/linux/clk-provider.h
 index 32d39613d217..6dec0b306336 100644
 --- a/include/linux/clk-provider.h
@@ -122,7 +125,7 @@ index 32d39613d217..6dec0b306336 100644
  					struct clk **best_parent_clk);
  	int		(*set_parent)(struct clk_hw *hw, u8 index);
  	u8		(*get_parent)(struct clk_hw *hw);
-+	struct clk	*(*get_safe_parent)(struct clk_hw *hw);
++	struct clk_hw	*(*get_safe_parent)(struct clk_hw *hw);
  	int		(*set_rate)(struct clk_hw *hw, unsigned long rate,
  				    unsigned long parent_rate);
  	int		(*set_rate_and_parent)(struct clk_hw *hw,
