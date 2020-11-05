@@ -42,44 +42,47 @@ ALLWIFIBOARDS:= \
 	linksys_mr8300-v0 \
 	luma_wrtq-329acn \
 	mobipromo_cm520-79f \
-	qxwlan_e2600ac
+	qxwlan_e2600ac \
+	xiaomi_ax3600
 
 ALLWIFIPACKAGES:=$(foreach BOARD,$(ALLWIFIBOARDS),ipq-wifi-$(BOARD))
 
 define Package/ipq-wifi-default
-  SUBMENU:=ath10k Board-Specific Overrides
-  SECTION:=firmware
-  CATEGORY:=Firmware
-  DEPENDS:=@(TARGET_ipq40xx||TARGET_ipq806x)
-  TITLE:=Custom Board
+	SUBMENU:=ath10k Board-Specific Overrides
+	SECTION:=firmware
+	CATEGORY:=Firmware
+	DEPENDS:=@(TARGET_ipq40xx||TARGET_ipq806x||TARGET_ipq807x)
+	TITLE:=Custom Board
 endef
 
 define ipq-wifi-install-one-to
-  $(INSTALL_DIR)  $(2)/lib/firmware/ath10k/$(3)/
-  $(INSTALL_DATA) $(1) $(2)/lib/firmware/ath10k/$(3)/board-2.bin
+	$(INSTALL_DIR)  $(2)/lib/firmware/ath10k/$(3)/
+	$(INSTALL_DATA) $(1) $(2)/lib/firmware/ath10k/$(3)/board-2.bin
 endef
 
 define ipq-wifi-install-one
-  $(if $(filter $(suffix $(1)),.QCA4019 .qca4019),\
-    $(call ipq-wifi-install-one-to,$(1),$(2),QCA4019/hw1.0),\
-  $(if $(filter $(suffix $(1)),.QCA9888 .qca9888),\
-    $(call ipq-wifi-install-one-to,$(1),$(2),QCA9888/hw2.0),\
-  $(if $(filter $(suffix $(1)),.QCA9984 .qca9984),\
-    $(call ipq-wifi-install-one-to,$(1),$(2),QCA9984/hw1.0),\
-    $(error Unrecognized board-file suffix '$(suffix $(1))' for '$(1)')\
-  )))
+	$(if $(filter $(suffix $(1)),.QCA4019 .qca4019),\
+		$(call ipq-wifi-install-one-to,$(1),$(2),QCA4019/hw1.0),\
+	$(if $(filter $(suffix $(1)),.QCA9888 .qca9888),\
+		$(call ipq-wifi-install-one-to,$(1),$(2),QCA9888/hw2.0),\
+	$(if $(filter $(suffix $(1)),.QCA9984 .qca9984),\
+		$(call ipq-wifi-install-one-to,$(1),$(2),QCA9984/hw1.0),\
+	$(if $(filter $(suffix $(1)),.QCA9889 .qca9889),\
+		$(call ipq-wifi-install-one-to,$(1),$(2),QCA9887/hw1.0),\
+		$(error Unrecognized board-file suffix '$(suffix $(1))' for '$(1)')\
+	))))
 
 endef
 # Blank line required at end of above define due to foreach context
 
 define generate-ipq-wifi-package
-  define Package/ipq-wifi-$(1)
-    $(call Package/ipq-wifi-default)
-    TITLE:=board-2.bin Overrides for $(2)
-    CONFLICTS:=$(PREV_BOARD)
-  endef
+	define Package/ipq-wifi-$(1)
+		$(call Package/ipq-wifi-default)
+		TITLE:=board-2.bin Overrides for $(2)
+		CONFLICTS:=$(PREV_BOARD)
+	endef
 
-  define Package/ipq-wifi-$(1)/description
+	define Package/ipq-wifi-$(1)/description
 The $(2) requires board-specific, reference ("cal") data
 that is not yet present in the upstream wireless firmware distribution.
 
@@ -89,14 +92,14 @@ overwrite those supplied by the ath10k-firmware-* packages.
 This is package is only necessary for the $(2).
 
 Do not install it for any other device!
-  endef
+	endef
 
-  define Package/ipq-wifi-$(1)/install-overlay
-    $$$$(foreach IPQ_WIFI_BOARD_FILE,$$$$(wildcard board-$(1).*),\
-      $$$$(call ipq-wifi-install-one,$$$$(IPQ_WIFI_BOARD_FILE),$$(1)))
-  endef
+	define Package/ipq-wifi-$(1)/install-overlay
+		$$$$(foreach IPQ_WIFI_BOARD_FILE,$$$$(wildcard board-$(1).*),\
+			$$$$(call ipq-wifi-install-one,$$$$(IPQ_WIFI_BOARD_FILE),$$(1)))
+	endef
 
-  PREV_BOARD+=ipq-wifi-$(1)
+	PREV_BOARD+=ipq-wifi-$(1)
 endef
 
 # Add board name to ALLWIFIBOARDS
@@ -121,5 +124,6 @@ $(eval $(call generate-ipq-wifi-package,linksys_mr8300-v0,Linksys MR8300))
 $(eval $(call generate-ipq-wifi-package,luma_wrtq-329acn,Luma WRTQ-329ACN))
 $(eval $(call generate-ipq-wifi-package,mobipromo_cm520-79f,MobiPromo CM520-79F))
 $(eval $(call generate-ipq-wifi-package,qxwlan_e2600ac,Qxwlan E2600AC))
+$(eval $(call generate-ipq-wifi-package,xiaomi_ax3600,Xiaomi AX3600))
 
 $(foreach PACKAGE,$(ALLWIFIPACKAGES),$(eval $(call BuildPackage,$(PACKAGE))))
