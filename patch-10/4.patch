@@ -1,0 +1,244 @@
+From a3935b3bc33f7facddb3f978d1558092e4f18243 Mon Sep 17 00:00:00 2001
+From: Mathias Kresin <dev@kresin.me>
+Date: Sun, 27 Dec 2020 12:37:35 +0100
+Subject: [PATCH] kernel: add default for linux 5.10 config symbols
+
+Add defaults for mainly MIPS related new config symbols.
+
+Signed-off-by: Mathias Kresin <dev@kresin.me>
+---
+ package/kernel/linux/modules/crypto.mk |  3 ++-
+ package/kernel/linux/modules/fs.mk     |  4 +++-
+ target/linux/generic/config-5.10       | 28 ++++++++++++++++++++++++++
+ 3 files changed, 33 insertions(+), 2 deletions(-)
+
+diff --git a/package/kernel/linux/modules/crypto.mk b/package/kernel/linux/modules/crypto.mk
+index e9e78e7967..b35c6e5107 100644
+--- a/package/kernel/linux/modules/crypto.mk
++++ b/package/kernel/linux/modules/crypto.mk
+@@ -803,7 +803,8 @@ define KernelPackage/crypto-user
+ 	CONFIG_CRYPTO_USER_API_AEAD \
+ 	CONFIG_CRYPTO_USER_API_HASH \
+ 	CONFIG_CRYPTO_USER_API_RNG \
+-	CONFIG_CRYPTO_USER_API_SKCIPHER
++	CONFIG_CRYPTO_USER_API_SKCIPHER \
++	CONFIG_CRYPTO_USER_API_ENABLE_OBSOLETE=y
+   FILES:= \
+ 	$(LINUX_DIR)/crypto/af_alg.ko \
+ 	$(LINUX_DIR)/crypto/algif_aead.ko \
+diff --git a/package/kernel/linux/modules/fs.mk b/package/kernel/linux/modules/fs.mk
+index a0db14ecfe..4b0451fdbf 100644
+--- a/package/kernel/linux/modules/fs.mk
++++ b/package/kernel/linux/modules/fs.mk
+@@ -549,7 +549,9 @@ $(eval $(call KernelPackage,fs-vfat))
+ define KernelPackage/fs-xfs
+   SUBMENU:=$(FS_MENU)
+   TITLE:=XFS filesystem support
+-  KCONFIG:=CONFIG_XFS_FS
++  KCONFIG:= \
++	CONFIG_XFS_FS \
++	CONFIG_XFS_SUPPORT_V4=y
+   DEPENDS:= +kmod-fs-exportfs +kmod-lib-crc32c
+   FILES:=$(LINUX_DIR)/fs/xfs/xfs.ko
+   AUTOLOAD:=$(call AutoLoad,30,xfs,1)
+diff --git a/target/linux/generic/config-5.10 b/target/linux/generic/config-5.10
+index 63f78cb815..0710aa3724 100644
+--- a/target/linux/generic/config-5.10
++++ b/target/linux/generic/config-5.10
+@@ -405,6 +405,7 @@ CONFIG_ARM_GIC_MAX_NR=1
+ # CONFIG_ARM_UNWIND is not set
+ # CONFIG_ARM_VIRT_EXT is not set
+ # CONFIG_AS3935 is not set
++# CONFIG_AS73211 is not set
+ # CONFIG_ASM9260_TIMER is not set
+ # CONFIG_ASUS_LAPTOP is not set
+ # CONFIG_ASUS_WIRELESS is not set
+@@ -787,9 +788,11 @@ CONFIG_CACHE_L2X0_PMU=y
+ # CONFIG_CAN_GW is not set
+ # CONFIG_CAN_HI311X is not set
+ # CONFIG_CAN_IFI_CANFD is not set
++# CONFIG_CAN_ISOTP is not set
+ # CONFIG_CAN_J1939 is not set
+ # CONFIG_CAN_KVASER_PCIEFD is not set
+ # CONFIG_CAN_MCBA_USB is not set
++# CONFIG_CAN_MCP251XFD is not set
+ # CONFIG_CAN_M_CAN is not set
+ # CONFIG_CAN_PEAK_PCIEFD is not set
+ # CONFIG_CAN_RAW is not set
+@@ -836,6 +839,7 @@ CONFIG_CC_OPTIMIZE_FOR_PERFORMANCE=y
+ # CONFIG_CHARGER_BQ24735 is not set
+ # CONFIG_CHARGER_BQ2515X is not set
+ # CONFIG_CHARGER_BQ25890 is not set
++# CONFIG_CHARGER_BQ25980 is not set
+ # CONFIG_CHARGER_DETECTOR_MAX14656 is not set
+ # CONFIG_CHARGER_GPIO is not set
+ # CONFIG_CHARGER_ISP1704 is not set
+@@ -1167,6 +1171,7 @@ CONFIG_CRYPTO_SKCIPHER2=y
+ # CONFIG_CRYPTO_USER_API_AEAD is not set
+ # CONFIG_CRYPTO_USER_API_HASH is not set
+ # CONFIG_CRYPTO_USER_API_RNG is not set
++# CONFIG_CRYPTO_USER_API_RNG_CAVP is not set
+ # CONFIG_CRYPTO_USER_API_SKCIPHER is not set
+ # CONFIG_CRYPTO_VMAC is not set
+ # CONFIG_CRYPTO_WP512 is not set
+@@ -1604,6 +1609,7 @@ CONFIG_DVB_MAX_ADAPTERS=16
+ # CONFIG_DVB_TDA8083 is not set
+ # CONFIG_DVB_TDA8261 is not set
+ # CONFIG_DVB_TDA826X is not set
++# CONFIG_DVB_TEST_DRIVERS is not set
+ # CONFIG_DVB_TS2020 is not set
+ # CONFIG_DVB_TTUSB_BUDGET is not set
+ # CONFIG_DVB_TTUSB_DEC is not set
+@@ -2046,6 +2052,7 @@ CONFIG_HARDEN_EL2_VECTORS=y
+ # CONFIG_HARDLOCKUP_DETECTOR is not set
+ # CONFIG_HCALL_STATS is not set
+ # CONFIG_HDC100X is not set
++# CONFIG_HDC2010 is not set
+ # CONFIG_HDLC is not set
+ # CONFIG_HDLC_CISCO is not set
+ # CONFIG_HDLC_FR is not set
+@@ -2171,6 +2178,7 @@ CONFIG_HIGH_RES_TIMERS=y
+ # CONFIG_HISILICON_ERRATUM_161600802 is not set
+ # CONFIG_HISI_DMA is not set
+ # CONFIG_HISI_FEMAC is not set
++# CONFIG_HISI_HIKEY_USB is not set
+ # CONFIG_HIX5HD2_GMAC is not set
+ # CONFIG_HMC425 is not set
+ # CONFIG_HMC6352 is not set
+@@ -2228,6 +2236,7 @@ CONFIG_HW_PERF_EVENTS=y
+ CONFIG_HW_RANDOM_TPM=y
+ # CONFIG_HW_RANDOM_VIA is not set
+ # CONFIG_HW_RANDOM_VIRTIO is not set
++# CONFIG_HW_RANDOM_XIPHERA is not set
+ # CONFIG_HX711 is not set
+ # CONFIG_HYPERV is not set
+ # CONFIG_HYPERV_TSCPAGE is not set
+@@ -2366,6 +2375,8 @@ CONFIG_HW_RANDOM_TPM=y
+ # CONFIG_IIO is not set
+ # CONFIG_IIO_BUFFER is not set
+ # CONFIG_IIO_BUFFER_CB is not set
++# CONFIG_IIO_BUFFER_DMA is not set
++# CONFIG_IIO_BUFFER_DMAENGINE is not set
+ # CONFIG_IIO_BUFFER_HW_CONSUMER is not set
+ # CONFIG_IIO_CONFIGFS is not set
+ CONFIG_IIO_CONSUMERS_PER_TRIGGER=2
+@@ -2715,6 +2726,7 @@ CONFIG_JFFS2_SUMMARY=y
+ CONFIG_JOLIET=y
+ # CONFIG_JSA1212 is not set
+ # CONFIG_JUMP_LABEL is not set
++# CONFIG_JZ4770_PHY is not set
+ # CONFIG_KALLSYMS is not set
+ # CONFIG_KALLSYMS_ABSOLUTE_PERCPU is not set
+ # CONFIG_KALLSYMS_ALL is not set
+@@ -2846,6 +2858,7 @@ CONFIG_LEDS_CLASS_MULTICOLOR=y
+ # CONFIG_LEDS_LM3692X is not set
+ # CONFIG_LEDS_LP3944 is not set
+ # CONFIG_LEDS_LP3952 is not set
++# CONFIG_LEDS_LP50XX is not set
+ # CONFIG_LEDS_LP5521 is not set
+ # CONFIG_LEDS_LP5523 is not set
+ # CONFIG_LEDS_LP5562 is not set
+@@ -2965,8 +2978,10 @@ CONFIG_MAC80211_STA_HASH_MAX_SIZE=0
+ # CONFIG_MACH_ASM9260 is not set
+ # CONFIG_MACH_DECSTATION is not set
+ # CONFIG_MACH_INGENIC is not set
++# CONFIG_MACH_INGENIC_SOC is not set
+ # CONFIG_MACH_JAZZ is not set
+ # CONFIG_MACH_JZ4740 is not set
++# CONFIG_MACH_LOONGSON2EF is not set
+ # CONFIG_MACH_LOONGSON32 is not set
+ # CONFIG_MACH_LOONGSON64 is not set
+ # CONFIG_MACH_PIC32 is not set
+@@ -3183,6 +3198,7 @@ CONFIG_MESSAGE_LOGLEVEL_DEFAULT=4
+ # CONFIG_MFD_SEC_CORE is not set
+ # CONFIG_MFD_SI476X_CORE is not set
+ # CONFIG_MFD_SKY81452 is not set
++# CONFIG_MFD_SL28CPLD is not set
+ # CONFIG_MFD_SM501 is not set
+ # CONFIG_MFD_SMSC is not set
+ # CONFIG_MFD_STMFX is not set
+@@ -3242,6 +3258,7 @@ CONFIG_MII=y
+ # CONFIG_MIPS_FPU_EMULATOR is not set
+ # CONFIG_MIPS_FP_SUPPORT is not set
+ # CONFIG_MIPS_GENERIC is not set
++# CONFIG_MIPS_GENERIC_KERNEL is not set
+ # CONFIG_MIPS_MALTA is not set
+ # CONFIG_MIPS_O32_FP64_SUPPORT is not set
+ # CONFIG_MIPS_PARAVIRT is not set
+@@ -4409,6 +4426,7 @@ CONFIG_PRINT_STACK_DEPTH=64
+ CONFIG_PROC_FS=y
+ # CONFIG_PROC_KCORE is not set
+ # CONFIG_PROC_PAGE_MONITOR is not set
++# CONFIG_PROC_STRIPPED is not set
+ CONFIG_PROC_SYSCTL=y
+ # CONFIG_PROC_VMCORE_DEVICE_DUMP is not set
+ # CONFIG_PROFILE_ALL_BRANCHES is not set
+@@ -4575,6 +4593,8 @@ CONFIG_RCU_TORTURE_TEST_SLOW_INIT_DELAY=3
+ # CONFIG_REGULATOR_PV88080 is not set
+ # CONFIG_REGULATOR_PV88090 is not set
+ # CONFIG_REGULATOR_PWM is not set
++# CONFIG_REGULATOR_RT4801 is not set
++# CONFIG_REGULATOR_RTMV20 is not set
+ # CONFIG_REGULATOR_SLG51000 is not set
+ # CONFIG_REGULATOR_SY8106A is not set
+ # CONFIG_REGULATOR_SY8824X is not set
+@@ -4927,6 +4947,7 @@ CONFIG_SELECT_MEMORY_MODEL=y
+ # CONFIG_SENSORS_ADM1029 is not set
+ # CONFIG_SENSORS_ADM1031 is not set
+ # CONFIG_SENSORS_ADM1177 is not set
++# CONFIG_SENSORS_ADM1266 is not set
+ # CONFIG_SENSORS_ADM1275 is not set
+ # CONFIG_SENSORS_ADM9240 is not set
+ # CONFIG_SENSORS_ADS1015 is not set
+@@ -5051,6 +5072,8 @@ CONFIG_SELECT_MEMORY_MODEL=y
+ # CONFIG_SENSORS_MAX6697 is not set
+ # CONFIG_SENSORS_MAX8688 is not set
+ # CONFIG_SENSORS_MCP3021 is not set
++# CONFIG_SENSORS_MP2975 is not set
++# CONFIG_SENSORS_MR75203 is not set
+ # CONFIG_SENSORS_NCT6683 is not set
+ # CONFIG_SENSORS_NCT6775 is not set
+ # CONFIG_SENSORS_NCT7802 is not set
+@@ -5201,6 +5224,7 @@ CONFIG_SERIAL_EARLYCON=y
+ # CONFIG_SGI_IP22 is not set
+ # CONFIG_SGI_IP27 is not set
+ # CONFIG_SGI_IP28 is not set
++# CONFIG_SGI_IP30 is not set
+ # CONFIG_SGI_IP32 is not set
+ # CONFIG_SGI_PARTITION is not set
+ # CONFIG_SG_POOL is not set
+@@ -5431,6 +5455,7 @@ CONFIG_SND_PROC_FS=y
+ # CONFIG_SND_SOC_CS35L34 is not set
+ # CONFIG_SND_SOC_CS35L35 is not set
+ # CONFIG_SND_SOC_CS35L36 is not set
++# CONFIG_SND_SOC_CS4234 is not set
+ # CONFIG_SND_SOC_CS4265 is not set
+ # CONFIG_SND_SOC_CS4270 is not set
+ # CONFIG_SND_SOC_CS4271 is not set
+@@ -5508,6 +5533,7 @@ CONFIG_SND_PROC_FS=y
+ CONFIG_SND_SOC_INTEL_SST_TOPLEVEL=y
+ # CONFIG_SND_SOC_JZ4725B_CODEC is not set
+ # CONFIG_SND_SOC_JZ4740_CODEC is not set
++# CONFIG_SND_SOC_JZ4770_CODEC is not set
+ # CONFIG_SND_SOC_MA120X0P is not set
+ # CONFIG_SND_SOC_MAX9759 is not set
+ # CONFIG_SND_SOC_MAX98088 is not set
+@@ -5568,6 +5594,7 @@ CONFIG_SND_SOC_INTEL_SST_TOPLEVEL=y
+ # CONFIG_SND_SOC_STI_SAS is not set
+ # CONFIG_SND_SOC_TAS2552 is not set
+ # CONFIG_SND_SOC_TAS2562 is not set
++# CONFIG_SND_SOC_TAS2764 is not set
+ # CONFIG_SND_SOC_TAS2770 is not set
+ # CONFIG_SND_SOC_TAS5086 is not set
+ # CONFIG_SND_SOC_TAS571X is not set
+@@ -6130,6 +6157,7 @@ CONFIG_TMPFS_XATTR=y
+ # CONFIG_TOUCHSCREEN_WM97XX_ZYLONITE is not set
+ # CONFIG_TOUCHSCREEN_ZET6223 is not set
+ # CONFIG_TOUCHSCREEN_ZFORCE is not set
++# CONFIG_TOUCHSCREEN_ZINITIX is not set
+ # CONFIG_TPL0102 is not set
+ # CONFIG_TPS6105X is not set
+ # CONFIG_TPS65010 is not set
+-- 
+2.20.1
+

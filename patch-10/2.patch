@@ -1,0 +1,44 @@
+From 34e06b5e9532ef0a26ddb27306a4d1710030a57a Mon Sep 17 00:00:00 2001
+From: Felix Fietkau <nbd@nbd.name>
+Date: Fri, 23 Oct 2020 11:48:11 +0200
+Subject: [PATCH] build: add option for initramfs zstd compression for newer
+ kernels
+
+Preparation for 5.10 support
+
+Signed-off-by: Felix Fietkau <nbd@nbd.name>
+---
+ config/Config-images.in    | 4 ++++
+ include/kernel-defaults.mk | 1 +
+ 2 files changed, 5 insertions(+)
+
+diff --git a/config/Config-images.in b/config/Config-images.in
+index 7d56d70908..2bb8ea7dfc 100644
+--- a/config/Config-images.in
++++ b/config/Config-images.in
+@@ -44,6 +44,10 @@ menu "Target Images"
+ 
+ 			config TARGET_INITRAMFS_COMPRESSION_XZ
+ 				bool "xz"
++
++			config TARGET_INITRAMFS_COMPRESSION_ZSTD
++				depends on !LINUX_5_4 && !LINUX_4_19
++				bool "zstd"
+ 		endchoice
+ 
+ 		config EXTERNAL_CPIO
+diff --git a/include/kernel-defaults.mk b/include/kernel-defaults.mk
+index 3900a57c0e..615a8ae619 100644
+--- a/include/kernel-defaults.mk
++++ b/include/kernel-defaults.mk
+@@ -77,6 +77,7 @@ ifeq ($(CONFIG_TARGET_ROOTFS_INITRAMFS),y)
+ 	echo -e "$(if $(CONFIG_TARGET_INITRAMFS_COMPRESSION_LZO),CONFIG_INITRAMFS_COMPRESSION_LZO=y\nCONFIG_RD_LZO=y,# CONFIG_INITRAMFS_COMPRESSION_LZO is not set\n# CONFIG_RD_LZO is not set)" >> $(LINUX_DIR)/.config
+ 	echo -e "$(if $(CONFIG_TARGET_INITRAMFS_COMPRESSION_XZ),CONFIG_INITRAMFS_COMPRESSION_XZ=y\nCONFIG_RD_XZ=y,# CONFIG_INITRAMFS_COMPRESSION_XZ is not set\n# CONFIG_RD_XZ is not set)" >> $(LINUX_DIR)/.config
+ 	echo -e "$(if $(CONFIG_TARGET_INITRAMFS_COMPRESSION_LZ4),CONFIG_INITRAMFS_COMPRESSION_LZ4=y\nCONFIG_RD_LZ4=y,# CONFIG_INITRAMFS_COMPRESSION_LZ4 is not set\n# CONFIG_RD_LZ4 is not set)" >> $(LINUX_DIR)/.config
++	echo -e "$(if $(CONFIG_TARGET_INITRAMFS_COMPRESSION_ZSTD),CONFIG_INITRAMFS_COMPRESSION_ZSTD=y\nCONFIG_RD_ZSTD=y,# CONFIG_INITRAMFS_COMPRESSION_ZSTD is not set\n# CONFIG_RD_ZSTD is not set)" >> $(LINUX_DIR)/.config
+   endef
+ else
+ endif
+-- 
+2.20.1
+

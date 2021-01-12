@@ -38,7 +38,7 @@ define KernelPackage/crypto-aead
   KCONFIG:= \
 	CONFIG_CRYPTO_AEAD \
 	CONFIG_CRYPTO_AEAD2
-  FILES:=$(LINUX_DIR)/crypto/aead.ko
+  FILES:=$(LINUX_DIR)/crypto/aead.ko $(LINUX_DIR)/crypto/geniv.ko@ge5.10
   AUTOLOAD:=$(call AutoLoad,09,aead,1)
   $(call AddDepends/crypto, +kmod-crypto-null)
 endef
@@ -803,7 +803,8 @@ define KernelPackage/crypto-user
 	CONFIG_CRYPTO_USER_API_AEAD \
 	CONFIG_CRYPTO_USER_API_HASH \
 	CONFIG_CRYPTO_USER_API_RNG \
-	CONFIG_CRYPTO_USER_API_SKCIPHER
+	CONFIG_CRYPTO_USER_API_SKCIPHER \
+	CONFIG_CRYPTO_USER_API_ENABLE_OBSOLETE=y
   FILES:= \
 	$(LINUX_DIR)/crypto/af_alg.ko \
 	$(LINUX_DIR)/crypto/algif_aead.ko \

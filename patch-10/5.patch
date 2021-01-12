@@ -1,0 +1,164 @@
+From 9c9d143b29cc6c91ea34487c8b13e6765fc427c2 Mon Sep 17 00:00:00 2001
+From: Mathias Kresin <dev@kresin.me>
+Date: Sun, 27 Dec 2020 22:13:04 +0100
+Subject: [PATCH] kernel: update kmod dependecies for 5.10
+
+Update the kernel module dependencies and paths with regard to linux
+5.10 changes.
+
+Signed-off-by: Mathias Kresin <dev@kresin.me>
+---
+ package/kernel/linux/modules/block.mk      |  2 +-
+ package/kernel/linux/modules/crypto.mk     |  2 +-
+ package/kernel/linux/modules/fs.mk         |  3 ++-
+ package/kernel/linux/modules/netdevices.mk | 11 +++++++----
+ package/kernel/linux/modules/other.mk      |  2 +-
+ package/kernel/linux/modules/usb.mk        | 18 ++++++++++++++----
+ 6 files changed, 26 insertions(+), 12 deletions(-)
+
+diff --git a/package/kernel/linux/modules/block.mk b/package/kernel/linux/modules/block.mk
+index b7767b3d16..df2d520914 100644
+--- a/package/kernel/linux/modules/block.mk
++++ b/package/kernel/linux/modules/block.mk
+@@ -218,7 +218,7 @@ $(eval $(call KernelPackage,dax))
+ define KernelPackage/dm
+   SUBMENU:=$(BLOCK_MENU)
+   TITLE:=Device Mapper
+-  DEPENDS:=+kmod-crypto-manager +kmod-dax
++  DEPENDS:=+kmod-crypto-manager +kmod-dax +!LINUX_5_4:kmod-keys-encrypted
+   # All the "=n" are unnecessary, they're only there
+   # to stop the config from asking the question.
+   # MIRROR is M because I've needed it for pvmove.
+diff --git a/package/kernel/linux/modules/crypto.mk b/package/kernel/linux/modules/crypto.mk
+index b35c6e5107..3c3204b24f 100644
+--- a/package/kernel/linux/modules/crypto.mk
++++ b/package/kernel/linux/modules/crypto.mk
+@@ -38,7 +38,7 @@ define KernelPackage/crypto-aead
+   KCONFIG:= \
+ 	CONFIG_CRYPTO_AEAD \
+ 	CONFIG_CRYPTO_AEAD2
+-  FILES:=$(LINUX_DIR)/crypto/aead.ko
++  FILES:=$(LINUX_DIR)/crypto/aead.ko $(LINUX_DIR)/crypto/geniv.ko@ge5.10
+   AUTOLOAD:=$(call AutoLoad,09,aead,1)
+   $(call AddDepends/crypto, +kmod-crypto-null)
+ endef
+diff --git a/package/kernel/linux/modules/fs.mk b/package/kernel/linux/modules/fs.mk
+index 4b0451fdbf..c02c42d425 100644
+--- a/package/kernel/linux/modules/fs.mk
++++ b/package/kernel/linux/modules/fs.mk
+@@ -368,7 +368,8 @@ define KernelPackage/fs-nfs-common
+   FILES:= \
+ 	$(LINUX_DIR)/fs/lockd/lockd.ko \
+ 	$(LINUX_DIR)/net/sunrpc/sunrpc.ko \
+-	$(LINUX_DIR)/fs/nfs_common/grace.ko
++	$(LINUX_DIR)/fs/nfs_common/grace.ko \
++	$(LINUX_DIR)/fs/nfs_common/nfs_ssc.ko@ge5.10
+   AUTOLOAD:=$(call AutoLoad,30,grace sunrpc lockd)
+ endef
+ 
+diff --git a/package/kernel/linux/modules/netdevices.mk b/package/kernel/linux/modules/netdevices.mk
+index 5f7a80bf22..d5f2796956 100644
+--- a/package/kernel/linux/modules/netdevices.mk
++++ b/package/kernel/linux/modules/netdevices.mk
+@@ -146,8 +146,10 @@ define KernelPackage/mdio-gpio
+ 	CONFIG_MDIO_BITBANG \
+ 	CONFIG_MDIO_GPIO
+   FILES:= \
+-	$(LINUX_DIR)/drivers/net/phy/mdio-gpio.ko \
+-	$(LINUX_DIR)/drivers/net/phy/mdio-bitbang.ko
++	$(LINUX_DIR)/drivers/net/phy/mdio-gpio.ko@lt5.10 \
++	$(LINUX_DIR)/drivers/net/phy/mdio-bitbang.ko@lt5.10 \
++	$(LINUX_DIR)/drivers/net/mdio/mdio-gpio.ko@ge5.10 \
++	$(LINUX_DIR)/drivers/net/mdio/mdio-bitbang.ko@ge5.10
+   AUTOLOAD:=$(call AutoProbe,mdio-gpio)
+ endef
+ 
+@@ -990,7 +992,7 @@ define KernelPackage/of-mdio
+   KCONFIG:=CONFIG_OF_MDIO
+   FILES:= \
+ 	$(LINUX_DIR)/drivers/net/phy/fixed_phy.ko \
+-	$(LINUX_DIR)/drivers/of/of_mdio.ko
++	$(LINUX_DIR)/drivers/net/mdio/of_mdio.ko
+   AUTOLOAD:=$(call AutoLoad,41,of_mdio)
+ endef
+ 
+@@ -1165,7 +1167,8 @@ define KernelPackage/sfp
+ 	CONFIG_MDIO_I2C
+   FILES:= \
+ 	$(LINUX_DIR)/drivers/net/phy/sfp.ko \
+-	$(LINUX_DIR)/drivers/net/phy/mdio-i2c.ko
++	$(LINUX_DIR)/drivers/net/phy/mdio-i2c.ko@lt5.10 \
++	$(LINUX_DIR)/drivers/net/mdio/mdio-i2c.ko@ge5.10
+   AUTOLOAD:=$(call AutoProbe,mdio-i2c sfp)
+ endef
+ 
+diff --git a/package/kernel/linux/modules/other.mk b/package/kernel/linux/modules/other.mk
+index 421b1b536c..d2fccb272f 100644
+--- a/package/kernel/linux/modules/other.mk
++++ b/package/kernel/linux/modules/other.mk
+@@ -1129,7 +1129,7 @@ define KernelPackage/keys-trusted
+   TITLE:=TPM trusted keys on kernel keyring
+   DEPENDS:=@KERNEL_KEYS +kmod-crypto-hash +kmod-crypto-hmac +kmod-crypto-sha1 +kmod-tpm
+   KCONFIG:=CONFIG_TRUSTED_KEYS
+-  FILES:=$(LINUX_DIR)/security/keys/trusted.ko
++  FILES:=$(LINUX_DIR)/security/keys/trusted.ko@lt5.10 $(LINUX_DIR)/security/keys/trusted-keys/trusted.ko@ge5.10
+   AUTOLOAD:=$(call AutoLoad,01,trusted-keys,1)
+ endef
+ 
+diff --git a/package/kernel/linux/modules/usb.mk b/package/kernel/linux/modules/usb.mk
+index 9e099fe73c..8fe7313f5a 100644
+--- a/package/kernel/linux/modules/usb.mk
++++ b/package/kernel/linux/modules/usb.mk
+@@ -412,7 +412,7 @@ $(eval $(call KernelPackage,usb2-pci))
+ 
+ define KernelPackage/usb-dwc2
+   TITLE:=DWC2 USB controller driver
+-  DEPENDS:=+USB_GADGET_SUPPORT:kmod-usb-gadget
++  DEPENDS:=+USB_GADGET_SUPPORT:kmod-usb-gadget +!LINUX_5_4:kmod-usb-role-switch
+   KCONFIG:= \
+ 	CONFIG_USB_PCI=y \
+ 	CONFIG_USB_DWC2 \
+@@ -1573,7 +1573,9 @@ $(eval $(call KernelPackage,usbip-server))
+ 
+ define KernelPackage/usb-chipidea
+   TITLE:=Host and device support for Chipidea controllers
+-  DEPENDS:=+USB_GADGET_SUPPORT:kmod-usb-gadget @TARGET_ath79 +kmod-usb-ehci +kmod-usb-phy-nop
++  DEPENDS:= \
++	+USB_GADGET_SUPPORT:kmod-usb-gadget @TARGET_ath79 +kmod-usb-ehci \
++	+kmod-usb-phy-nop +kmod-usb-role-switch
+   KCONFIG:= \
+ 	CONFIG_EXTCON \
+ 	CONFIG_USB_CHIPIDEA \
+@@ -1583,8 +1585,7 @@ define KernelPackage/usb-chipidea
+   FILES:= \
+ 	$(LINUX_DIR)/drivers/extcon/extcon-core.ko \
+ 	$(LINUX_DIR)/drivers/usb/chipidea/ci_hdrc.ko \
+-	$(LINUX_DIR)/drivers/usb/common/ulpi.ko \
+-	$(LINUX_DIR)/drivers/usb/roles/roles.ko
++	$(LINUX_DIR)/drivers/usb/common/ulpi.ko
+   AUTOLOAD:=$(call AutoLoad,39,ci_hdrc,1)
+   $(call AddDepends/usb)
+ endef
+@@ -1682,6 +1683,7 @@ endef
+ 
+ $(eval $(call KernelPackage,usb-net2280))
+ 
++
+ define KernelPackage/chaoskey
+   SUBMENU:=$(USB_MENU)
+   TITLE:=Chaoskey hardware RNG support
+@@ -1698,3 +1700,11 @@ endef
+ 
+ $(eval $(call KernelPackage,chaoskey))
+ 
++
++define KernelPackage/usb-role-switch
++  TITLE:=USB Role Switch Support
++  KCONFIG:=CONFIG_USB_ROLE_SWITCH
++  FILES:=$(LINUX_DIR)/drivers/usb/roles/roles.ko
++endef
++
++$(eval $(call KernelPackage,usb-role-switch))
+-- 
+2.20.1
+

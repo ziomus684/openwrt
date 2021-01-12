@@ -1,0 +1,47 @@
+From 24e3937555828692af3a92921c041695e99510f5 Mon Sep 17 00:00:00 2001
+From: Felix Fietkau <nbd@nbd.name>
+Date: Thu, 22 Oct 2020 10:29:34 +0200
+Subject: [PATCH] build: build kernel image before building modules/packages
+
+This is needed for linux 5.10, where modules.builtin is generated from
+vmlinux.o
+
+Signed-off-by: Felix Fietkau <nbd@nbd.name>
+---
+ include/kernel-defaults.mk | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/include/kernel-defaults.mk b/include/kernel-defaults.mk
+index 863c180e48..3900a57c0e 100644
+--- a/include/kernel-defaults.mk
++++ b/include/kernel-defaults.mk
+@@ -114,7 +114,7 @@ endef
+ 
+ define Kernel/CompileModules/Default
+ 	rm -f $(LINUX_DIR)/vmlinux $(LINUX_DIR)/System.map
+-	+$(KERNEL_MAKE) modules
++	+$(KERNEL_MAKE) $(if $(KERNELNAME),$(KERNELNAME),all) modules
+ endef
+ 
+ OBJCOPY_STRIP = -R .reginfo -R .notes -R .note -R .comment -R .mdebug -R .note.gnu.build-id
+@@ -138,7 +138,7 @@ endef
+ 
+ define Kernel/CompileImage/Default
+ 	rm -f $(TARGET_DIR)/init
+-	+$(KERNEL_MAKE) $(if $(KERNELNAME),$(KERNELNAME),all) modules
++	+$(KERNEL_MAKE) $(if $(KERNELNAME),$(KERNELNAME),all)
+ 	$(call Kernel/CopyImage)
+ endef
+ 
+@@ -148,7 +148,7 @@ define Kernel/CompileImage/Initramfs
+ 	$(CP) $(GENERIC_PLATFORM_DIR)/other-files/init $(TARGET_DIR)/init
+ 	$(if $(SOURCE_DATE_EPOCH),touch -hcd "@$(SOURCE_DATE_EPOCH)" $(TARGET_DIR)/init)
+ 	rm -rf $(KERNEL_BUILD_DIR)/linux-$(LINUX_VERSION)/usr/initramfs_data.cpio*
+-	+$(KERNEL_MAKE) $(if $(KERNELNAME),$(KERNELNAME),all) modules
++	+$(KERNEL_MAKE) $(if $(KERNELNAME),$(KERNELNAME),all)
+ 	$(call Kernel/CopyImage,-initramfs)
+ endef
+ else
+-- 
+2.20.1
+
