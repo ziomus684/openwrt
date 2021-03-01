@@ -1,0 +1,61 @@
+From d606fa3bf57ad3e72427452c9067daf7a026f401 Mon Sep 17 00:00:00 2001
+From: Ansuel Smith <ansuelsmth@gmail.com>
+Date: Wed, 25 Nov 2020 17:06:55 +0100
+Subject: [PATCH v10 5/8] drivers: thermal: tsens: Fix bug in sensor enable for
+ msm8960
+
+It's present a hardware bug in tsens VER_0 where if sensors upper to id
+6 are enabled selectively, underfined results are expected. Fix this by
+enabling all the remaining sensor in one step.
+
+Signed-off-by: Ansuel Smith <ansuelsmth@gmail.com>
+---
+ drivers/thermal/qcom/tsens-8960.c | 19 +++++++++++++++++--
+ 1 file changed, 17 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/thermal/qcom/tsens-8960.c b/drivers/thermal/qcom/tsens-8960.c
+index 86585f439985..248aaa65b5b0 100644
+--- a/drivers/thermal/qcom/tsens-8960.c
++++ b/drivers/thermal/qcom/tsens-8960.c
+@@ -27,9 +27,9 @@
+ #define EN			BIT(0)
+ #define SW_RST			BIT(1)
+ #define SENSOR0_EN		BIT(3)
++#define MEASURE_PERIOD		BIT(18)
+ #define SLP_CLK_ENA		BIT(26)
+ #define SLP_CLK_ENA_8660	BIT(24)
+-#define MEASURE_PERIOD		1
+ #define SENSOR0_SHIFT		3
+ 
+ /* INT_STATUS_ADDR bitmasks */
+@@ -132,11 +132,26 @@ static int enable_8960(struct tsens_priv *priv, int id)
+ 	if (ret)
+ 		return ret;
+ 
+-	mask = BIT(id + SENSOR0_SHIFT);
++	/* HARDWARE BUG:
++	 * On platform with more than 5 sensors, all the remaining
++	 * sensors needs to be enabled all togheder or underfined
++	 * results are expected. (Sensor 6-7 disabled, Sensor 3
++	 * disabled...) In the original driver, all the sensors
++	 * are enabled in one step hence this bug is not triggered.
++	 */
++	if (id > 5)
++		mask = GENMASK(10, 6);
++	else
++		mask = BIT(id);
++
++	mask <<= SENSOR0_SHIFT;
++
+ 	ret = regmap_write(priv->tm_map, CNTL_ADDR, reg | SW_RST);
+ 	if (ret)
+ 		return ret;
+ 
++	reg |= MEASURE_PERIOD;
++
+ 	if (priv->num_sensors > 1)
+ 		reg |= mask | SLP_CLK_ENA | EN;
+ 	else
+-- 
+2.30.0
+
