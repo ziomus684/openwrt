@@ -1,0 +1,39 @@
+From 2d9a0f382d7786c968b0fbebd9e56c08de9d12f1 Mon Sep 17 00:00:00 2001
+From: Ansuel Smith <ansuelsmth@gmail.com>
+Date: Fri, 16 Apr 2021 23:41:06 +0200
+Subject: [PATCH 22/22] drivers: net: dsa: qca8k: enlarge mdio delay and
+ timeout
+
+- Enlarge set page delay to QDSK source
+- Enlarge mdio MASTER timeout busy wait
+
+Signed-off-by: Ansuel Smith <ansuelsmth@gmail.com>
+---
+ drivers/net/dsa/qca8k.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/net/dsa/qca8k.c b/drivers/net/dsa/qca8k.c
+index 88b470ed3abe..b7679ad5c9fb 100644
+--- a/drivers/net/dsa/qca8k.c
++++ b/drivers/net/dsa/qca8k.c
+@@ -191,7 +191,7 @@ qca8k_set_page(struct mii_bus *bus, u16 page)
+ 	}
+ 
+ 	qca8k_current_page = page;
+-	udelay(5);
++	usleep_range(1000, 2000);
+ }
+ 
+ static u32
+@@ -618,7 +618,7 @@ qca8k_mdio_busy_wait(struct qca8k_priv *priv, u32 reg, u32 mask)
+ 
+ 	qca8k_split_addr(reg, &r1, &r2, &page);
+ 
+-	timeout = jiffies + msecs_to_jiffies(20);
++	timeout = jiffies + msecs_to_jiffies(2000);
+ 
+ 	/* loop until the busy flag has cleared */
+ 	do {
+-- 
+2.30.2
+

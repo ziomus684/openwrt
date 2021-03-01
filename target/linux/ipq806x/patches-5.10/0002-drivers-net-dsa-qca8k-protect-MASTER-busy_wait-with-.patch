@@ -1,0 +1,117 @@
+From 4687fc42221ffb84f355945aceac06132c4e5ba2 Mon Sep 17 00:00:00 2001
+From: Ansuel Smith <ansuelsmth@gmail.com>
+Date: Fri, 16 Apr 2021 16:28:13 +0200
+Subject: [PATCH] drivers: net: dsa: qca8k: protect MASTER busy_wait with mdio
+ mutex
+
+MDIO_MASTER operation have a dedicated busy wait that is not protected
+by the mdio mutex. This can cause situation where the MASTER operation
+is done and a normal operation is executed between the MASTER read/write
+and the MASTER busy_wait. Rework the qca8k_mdio_read/write function to
+address this issue by binding the lock for the whole MASTER operation
+and not only the mdio read/write common operation.
+
+Signed-off-by: Ansuel Smith <ansuelsmth@gmail.com>
+---
+ drivers/net/dsa/qca8k.c | 59 ++++++++++++++++++++++++++++++++++-------
+ 1 file changed, 50 insertions(+), 9 deletions(-)
+
+diff --git a/drivers/net/dsa/qca8k.c b/drivers/net/dsa/qca8k.c
+index 3908cd083056..190a47a0bdc7 100644
+--- a/drivers/net/dsa/qca8k.c
++++ b/drivers/net/dsa/qca8k.c
+@@ -610,9 +610,33 @@ qca8k_port_to_phy(int port)
+ 	return port - 1;
+ }
+ 
++static int
++qca8k_mdio_busy_wait(struct qca8k_priv *priv, u32 reg, u32 mask)
++{
++	unsigned long timeout;
++	u16 r1, r2, page;
++
++	qca8k_split_addr(reg, &r1, &r2, &page);
++
++	timeout = jiffies + msecs_to_jiffies(20);
++
++	/* loop until the busy flag has cleared */
++	do {
++		u32 val = qca8k_mii_read32(priv->bus, 0x10 | r2, r1);
++		int busy = val & mask;
++
++		if (!busy)
++			break;
++		cond_resched();
++	} while (!time_after_eq(jiffies, timeout));
++
++	return time_after_eq(jiffies, timeout);
++}
++
+ static int
+ qca8k_mdio_write(struct qca8k_priv *priv, int port, u32 regnum, u16 data)
+ {
++	u16 r1, r2, page;
+ 	u32 phy, val;
+ 	int ret;
+ 
+@@ -628,10 +653,17 @@ qca8k_mdio_write(struct qca8k_priv *priv, int port, u32 regnum, u16 data)
+ 	      QCA8K_MDIO_MASTER_REG_ADDR(regnum) |
+ 	      QCA8K_MDIO_MASTER_DATA(data);
+ 
+-	qca8k_write(priv, QCA8K_MDIO_MASTER_CTRL, val);
++	qca8k_split_addr(QCA8K_MDIO_MASTER_CTRL, &r1, &r2, &page);
++
++	mutex_lock_nested(&priv->bus->mdio_lock, MDIO_MUTEX_NESTED);
++
++	qca8k_set_page(priv->bus, page);
++	qca8k_mii_write32(priv->bus, 0x10 | r2, r1, val);
+ 
+-	ret = qca8k_busy_wait(priv, QCA8K_MDIO_MASTER_CTRL,
+-			      QCA8K_MDIO_MASTER_BUSY);
++	ret = qca8k_mdio_busy_wait(priv, QCA8K_MDIO_MASTER_CTRL,
++				   QCA8K_MDIO_MASTER_BUSY);
++
++	mutex_unlock(&priv->bus->mdio_lock);
+ 
+ 	qca8k_reg_clear(priv, QCA8K_MDIO_MASTER_CTRL,
+ 			QCA8K_MDIO_MASTER_EN);
+@@ -642,6 +674,7 @@ qca8k_mdio_write(struct qca8k_priv *priv, int port, u32 regnum, u16 data)
+ static int
+ qca8k_mdio_read(struct qca8k_priv *priv, int port, u32 regnum)
+ {
++	u16 r1, r2, page;
+ 	u32 phy, val;
+ 
+ 	if (regnum >= QCA8K_MDIO_MASTER_MAX_REG)
+@@ -655,14 +688,22 @@ qca8k_mdio_read(struct qca8k_priv *priv, int port, u32 regnum)
+ 	      QCA8K_MDIO_MASTER_READ | QCA8K_MDIO_MASTER_PHY_ADDR(phy) |
+ 	      QCA8K_MDIO_MASTER_REG_ADDR(regnum);
+ 
+-	qca8k_write(priv, QCA8K_MDIO_MASTER_CTRL, val);
++	qca8k_split_addr(QCA8K_MDIO_MASTER_CTRL, &r1, &r2, &page);
+ 
+-	if (qca8k_busy_wait(priv, QCA8K_MDIO_MASTER_CTRL,
+-			    QCA8K_MDIO_MASTER_BUSY))
+-		return -ETIMEDOUT;
++	mutex_lock_nested(&priv->bus->mdio_lock, MDIO_MUTEX_NESTED);
++
++	qca8k_set_page(priv->bus, page);
++	qca8k_mii_write32(priv->bus, 0x10 | r2, r1, val);
++
++	if (qca8k_mdio_busy_wait(priv, QCA8K_MDIO_MASTER_CTRL,
++				 QCA8K_MDIO_MASTER_BUSY))
++		val = -ETIMEDOUT;
++	else
++		val = qca8k_mii_read32(priv->bus, 0x10 | r2, r1);
++
++	mutex_unlock(&priv->bus->mdio_lock);
+ 
+-	val = (qca8k_read(priv, QCA8K_MDIO_MASTER_CTRL) &
+-		QCA8K_MDIO_MASTER_DATA_MASK);
++	val &= QCA8K_MDIO_MASTER_DATA_MASK;
+ 
+ 	qca8k_reg_clear(priv, QCA8K_MDIO_MASTER_CTRL,
+ 			QCA8K_MDIO_MASTER_EN);
+-- 
+2.30.2
+

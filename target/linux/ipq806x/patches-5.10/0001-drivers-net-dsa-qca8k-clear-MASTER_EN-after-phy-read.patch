@@ -1,0 +1,59 @@
+From 0c1044fe84f3613ee44a1f15771205e44166d2f2 Mon Sep 17 00:00:00 2001
+From: Ansuel Smith <ansuelsmth@gmail.com>
+Date: Fri, 16 Apr 2021 00:47:16 +0200
+Subject: [PATCH] drivers: net: dsa: qca8k: clear MASTER_EN after phy
+ read/write
+
+Clear MDIO_MASTER_EN bit from MDIO_MASTER_CTRL after read/write
+operation. The MDIO_MASTER_EN bit is not reset after read/write
+operation and the next operation can be wrongly interpreted by the
+switch as a mdio operation. This cause a production of wrong/garbage
+data from the switch and underfined bheavior. (random port drop,
+unplugged port flagged with link up, wrong port speed)
+
+Signed-off-by: Ansuel Smith <ansuelsmth@gmail.com>
+---
+ drivers/net/dsa/qca8k.c | 13 +++++++++++--
+ 1 file changed, 11 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/net/dsa/qca8k.c b/drivers/net/dsa/qca8k.c
+index 3735ae4d968e..3908cd083056 100644
+--- a/drivers/net/dsa/qca8k.c
++++ b/drivers/net/dsa/qca8k.c
+@@ -614,6 +614,7 @@ static int
+ qca8k_mdio_write(struct qca8k_priv *priv, int port, u32 regnum, u16 data)
+ {
+ 	u32 phy, val;
++	int ret;
+ 
+ 	if (regnum >= QCA8K_MDIO_MASTER_MAX_REG)
+ 		return -EINVAL;
+@@ -629,8 +630,13 @@ qca8k_mdio_write(struct qca8k_priv *priv, int port, u32 regnum, u16 data)
+ 
+ 	qca8k_write(priv, QCA8K_MDIO_MASTER_CTRL, val);
+ 
+-	return qca8k_busy_wait(priv, QCA8K_MDIO_MASTER_CTRL,
+-		QCA8K_MDIO_MASTER_BUSY);
++	ret = qca8k_busy_wait(priv, QCA8K_MDIO_MASTER_CTRL,
++			      QCA8K_MDIO_MASTER_BUSY);
++
++	qca8k_reg_clear(priv, QCA8K_MDIO_MASTER_CTRL,
++			QCA8K_MDIO_MASTER_EN);
++
++	return ret;
+ }
+ 
+ static int
+@@ -658,6 +664,9 @@ qca8k_mdio_read(struct qca8k_priv *priv, int port, u32 regnum)
+ 	val = (qca8k_read(priv, QCA8K_MDIO_MASTER_CTRL) &
+ 		QCA8K_MDIO_MASTER_DATA_MASK);
+ 
++	qca8k_reg_clear(priv, QCA8K_MDIO_MASTER_CTRL,
++			QCA8K_MDIO_MASTER_EN);
++
+ 	return val;
+ }
+ 
+-- 
+2.30.2
+

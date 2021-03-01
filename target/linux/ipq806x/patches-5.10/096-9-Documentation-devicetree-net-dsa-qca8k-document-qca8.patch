@@ -1,0 +1,29 @@
+From bad54c7674f121fd70c1cf9c9acdb79658d14f8d Mon Sep 17 00:00:00 2001
+From: Ansuel Smith <ansuelsmth@gmail.com>
+Date: Mon, 1 Mar 2021 12:19:56 +0100
+Subject: [PATCH 2/2] Documentation: devicetree: net: dsa: qca8k: document
+ qca8k,mac6_exchange
+
+Document new binding qca8k,mac6_exchange that exchange the mac0 port
+with mac6.
+
+Signed-off-by: Ansuel Smith <ansuelsmth@gmail.com>
+---
+ Documentation/devicetree/bindings/net/dsa/qca8k.txt | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/Documentation/devicetree/bindings/net/dsa/qca8k.txt b/Documentation/devicetree/bindings/net/dsa/qca8k.txt
+index ed9c20ac03d8..148da30299c3 100644
+--- a/Documentation/devicetree/bindings/net/dsa/qca8k.txt
++++ b/Documentation/devicetree/bindings/net/dsa/qca8k.txt
+@@ -12,6 +12,7 @@ Required properties:
+ Optional properties:
+ 
+ - reset-gpios: GPIO to be used to reset the whole device
++- qca8k,mac6_exchange: Exchange mac0 port with mac6 port
+ - qca8k,rgmii0_1_8v: Set the internal regulator to supply 1.8v for MAC0 port
+ - qca8k,rgmii56_1_8v: Set the internal regulator to supply 1.8v for MAC5/6 port
+ 
+-- 
+2.30.0
+

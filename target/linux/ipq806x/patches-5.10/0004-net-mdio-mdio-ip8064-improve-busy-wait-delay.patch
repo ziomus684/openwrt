@@ -1,0 +1,88 @@
+From 792c5042c7ba79506695d2de89417f68cd83be6d Mon Sep 17 00:00:00 2001
+From: Ansuel Smith <ansuelsmth@gmail.com>
+Date: Fri, 5 Feb 2021 15:08:59 +0100
+Subject: [PATCH 04/22] net: mdio: mdio-ip8064: improve busy wait delay
+
+With the use of the qca8k dsa driver, some problem arised related to
+port status detection. With a load on a specific port (for example a
+simple speed test), the driver starts to bheave in a strange way and
+garbage data is produced. To address this, enlarge the sleep delay and
+address a bug for the reg offset 31 that require additional delay for
+this specific reg.
+
+Signed-off-by: Ansuel Smith <ansuelsmth@gmail.com>
+---
+ drivers/net/mdio/mdio-ipq8064.c | 36 ++++++++++++++++++++-------------
+ 1 file changed, 22 insertions(+), 14 deletions(-)
+
+diff --git a/drivers/net/mdio/mdio-ipq8064.c b/drivers/net/mdio/mdio-ipq8064.c
+index 1bd18857e1c5..94176b1b53a5 100644
+--- a/drivers/net/mdio/mdio-ipq8064.c
++++ b/drivers/net/mdio/mdio-ipq8064.c
+@@ -15,25 +15,25 @@
+ #include <linux/mfd/syscon.h>
+ 
+ /* MII address register definitions */
+-#define MII_ADDR_REG_ADDR                       0x10
+-#define MII_BUSY                                BIT(0)
+-#define MII_WRITE                               BIT(1)
+-#define MII_CLKRANGE_60_100M                    (0 << 2)
+-#define MII_CLKRANGE_100_150M                   (1 << 2)
+-#define MII_CLKRANGE_20_35M                     (2 << 2)
+-#define MII_CLKRANGE_35_60M                     (3 << 2)
+-#define MII_CLKRANGE_150_250M                   (4 << 2)
+-#define MII_CLKRANGE_250_300M                   (5 << 2)
++#define MII_ADDR_REG_ADDR			0x10
++#define MII_BUSY				BIT(0)
++#define MII_WRITE				BIT(1)
++#define MII_CLKRANGE_60_100M 			(0 << 2)
++#define MII_CLKRANGE_100_150M			(1 << 2)
++#define MII_CLKRANGE_20_35M			(2 << 2)
++#define MII_CLKRANGE_35_60M			(3 << 2)
++#define MII_CLKRANGE_150_250M			(4 << 2)
++#define MII_CLKRANGE_250_300M			(5 << 2)
+ #define MII_CLKRANGE_MASK			GENMASK(4, 2)
+ #define MII_REG_SHIFT				6
+ #define MII_REG_MASK				GENMASK(10, 6)
+ #define MII_ADDR_SHIFT				11
+ #define MII_ADDR_MASK				GENMASK(15, 11)
+ 
+-#define MII_DATA_REG_ADDR                       0x14
++#define MII_DATA_REG_ADDR			0x14
+ 
+-#define MII_MDIO_DELAY_USEC                     (1000)
+-#define MII_MDIO_RETRY_MSEC                     (10)
++#define MII_MDIO_DELAY_USEC			(1000)
++#define MII_MDIO_RETRY_MSEC			(10)
+ 
+ struct ipq8064_mdio {
+ 	struct regmap *base; /* NSS_GMAC0_BASE */
+@@ -65,7 +65,7 @@ ipq8064_mdio_read(struct mii_bus *bus, int phy_addr, int reg_offset)
+ 		   ((reg_offset << MII_REG_SHIFT) & MII_REG_MASK);
+ 
+ 	regmap_write(priv->base, MII_ADDR_REG_ADDR, miiaddr);
+-	usleep_range(8, 10);
++	usleep_range(10, 13);
+ 
+ 	err = ipq8064_mdio_wait_busy(priv);
+ 	if (err)
+@@ -91,7 +91,15 @@ ipq8064_mdio_write(struct mii_bus *bus, int phy_addr, int reg_offset, u16 data)
+ 		   ((reg_offset << MII_REG_SHIFT) & MII_REG_MASK);
+ 
+ 	regmap_write(priv->base, MII_ADDR_REG_ADDR, miiaddr);
+-	usleep_range(8, 10);
++
++	/*
++	 * For the specific reg 31 extra time is needed or the next
++	 * read will produce grabage data.
++	 */
++	if (reg_offset == 31)
++		usleep_range(30, 43);
++	else
++		usleep_range(10, 13);
+ 
+ 	return ipq8064_mdio_wait_busy(priv);
+ }
+-- 
+2.30.2
+
