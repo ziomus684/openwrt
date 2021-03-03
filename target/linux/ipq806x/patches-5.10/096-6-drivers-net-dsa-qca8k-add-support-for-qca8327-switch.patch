@@ -13,11 +13,9 @@ Signed-off-by: Ansuel Smith <ansuelsmth@gmail.com>
  drivers/net/dsa/qca8k.h |  5 +++++
  2 files changed, 23 insertions(+), 3 deletions(-)
 
-diff --git a/drivers/net/dsa/qca8k.c b/drivers/net/dsa/qca8k.c
-index 9e295484f309..298c2b788e29 100644
 --- a/drivers/net/dsa/qca8k.c
 +++ b/drivers/net/dsa/qca8k.c
-@@ -1479,6 +1479,7 @@ static const struct dsa_switch_ops qca8k_switch_ops = {
+@@ -1479,6 +1479,7 @@ static const struct dsa_switch_ops qca8k
  static int
  qca8k_sw_probe(struct mdio_device *mdiodev)
  {
@@ -25,7 +23,7 @@ index 9e295484f309..298c2b788e29 100644
  	struct qca8k_priv *priv;
  	u32 id;
  
-@@ -1506,11 +1507,16 @@ qca8k_sw_probe(struct mdio_device *mdiodev)
+@@ -1506,11 +1507,16 @@ qca8k_sw_probe(struct mdio_device *mdiod
  		gpiod_set_value_cansleep(priv->reset_gpio, 0);
  	}
  
@@ -43,7 +41,7 @@ index 9e295484f309..298c2b788e29 100644
  		return -ENODEV;
  
  	priv->ds = devm_kzalloc(&mdiodev->dev, sizeof(*priv->ds), GFP_KERNEL);
-@@ -1577,9 +1583,18 @@ static int qca8k_resume(struct device *dev)
+@@ -1577,9 +1583,18 @@ static int qca8k_resume(struct device *d
  static SIMPLE_DEV_PM_OPS(qca8k_pm_ops,
  			 qca8k_suspend, qca8k_resume);
  
@@ -64,8 +62,6 @@ index 9e295484f309..298c2b788e29 100644
  	{ /* sentinel */ },
  };
  
-diff --git a/drivers/net/dsa/qca8k.h b/drivers/net/dsa/qca8k.h
-index 003f9a340706..4edf8a6aa58c 100644
 --- a/drivers/net/dsa/qca8k.h
 +++ b/drivers/net/dsa/qca8k.h
 @@ -15,6 +15,8 @@
@@ -77,7 +73,7 @@ index 003f9a340706..4edf8a6aa58c 100644
  #define PHY_ID_QCA8337					0x004dd036
  #define QCA8K_ID_QCA8337				0x13
  
-@@ -239,6 +240,10 @@ struct ar8xxx_port_status {
+@@ -239,6 +241,10 @@ struct ar8xxx_port_status {
  	int enabled;
  };
  
@@ -88,6 +84,3 @@ index 003f9a340706..4edf8a6aa58c 100644
  struct qca8k_priv {
  	struct regmap *regmap;
  	struct mii_bus *bus;
--- 
-2.29.2
-

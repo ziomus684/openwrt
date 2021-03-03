@@ -12,11 +12,9 @@ Signed-off-by: Ansuel Smith <ansuelsmth@gmail.com>
  drivers/net/dsa/qca8k.c | 6 +++++-
  1 file changed, 5 insertions(+), 1 deletion(-)
 
-diff --git a/drivers/net/dsa/qca8k.c b/drivers/net/dsa/qca8k.c
-index 5bdac669a339..be58a53daa28 100644
 --- a/drivers/net/dsa/qca8k.c
 +++ b/drivers/net/dsa/qca8k.c
-@@ -133,10 +133,14 @@ qca8k_set_page(struct mii_bus *bus, u16 page)
+@@ -133,10 +133,14 @@ qca8k_set_page(struct mii_bus *bus, u16
  	if (page == qca8k_current_page)
  		return;
  
@@ -32,6 +30,3 @@ index 5bdac669a339..be58a53daa28 100644
  }
  
  static u32
--- 
-2.29.2
-

@@ -12,11 +12,9 @@ Signed-off-by: Ansuel Smith <ansuelsmth@gmail.com>
  drivers/net/dsa/qca8k.h |  6 ++++++
  2 files changed, 16 insertions(+)
 
-diff --git a/drivers/net/dsa/qca8k.c b/drivers/net/dsa/qca8k.c
-index 385ffc8e9cd5..f88e2aa49167 100644
 --- a/drivers/net/dsa/qca8k.c
 +++ b/drivers/net/dsa/qca8k.c
-@@ -858,6 +858,16 @@ qca8k_setup(struct dsa_switch *ds)
+@@ -855,6 +855,16 @@ qca8k_setup(struct dsa_switch *ds)
  		}
  	}
  
@@ -33,11 +31,9 @@ index 385ffc8e9cd5..f88e2aa49167 100644
  	ret = qca8k_setup_mac_pwr_sel(priv);
  	if (ret < 0)
  		return ret;
-diff --git a/drivers/net/dsa/qca8k.h b/drivers/net/dsa/qca8k.h
-index 4edf8a6aa58c..4f67949f3a97 100644
 --- a/drivers/net/dsa/qca8k.h
 +++ b/drivers/net/dsa/qca8k.h
-@@ -169,6 +169,12 @@
+@@ -170,6 +170,12 @@
  #define   QCA8K_PORT_LOOKUP_STATE			GENMASK(18, 16)
  #define   QCA8K_PORT_LOOKUP_LEARN			BIT(20)
  
@@ -50,6 +46,3 @@ index 4edf8a6aa58c..4f67949f3a97 100644
  #define QCA8K_REG_PORT_HOL_CTRL0(_i)			(0x970 + (_i) * 0x8)
  #define   QCA8K_PORT_HOL_CTRL0_EG_PRI0_BUF		GENMASK(3, 0)
  #define   QCA8K_PORT_HOL_CTRL0_EG_PRI0(x)		((x) << 0)
--- 
-2.29.2
-

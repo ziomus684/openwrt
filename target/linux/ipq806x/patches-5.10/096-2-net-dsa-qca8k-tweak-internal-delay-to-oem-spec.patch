@@ -12,11 +12,9 @@ Signed-off-by: Ansuel Smith <ansuelsmth@gmail.com>
  drivers/net/dsa/qca8k.h | 9 ++++-----
  2 files changed, 8 insertions(+), 7 deletions(-)
 
-diff --git a/drivers/net/dsa/qca8k.c b/drivers/net/dsa/qca8k.c
-index be58a53daa28..33041c035bba 100644
 --- a/drivers/net/dsa/qca8k.c
 +++ b/drivers/net/dsa/qca8k.c
-@@ -850,8 +850,10 @@ qca8k_phylink_mac_config(struct dsa_switch *ds, int port, unsigned int mode,
+@@ -850,8 +850,10 @@ qca8k_phylink_mac_config(struct dsa_swit
  		 */
  		qca8k_write(priv, reg,
  			    QCA8K_PORT_PAD_RGMII_EN |
@@ -29,8 +27,6 @@ index be58a53daa28..33041c035bba 100644
  		qca8k_write(priv, QCA8K_REG_PORT5_PAD_CTRL,
  			    QCA8K_PORT_PAD_RGMII_RX_DELAY_EN);
  		break;
-diff --git a/drivers/net/dsa/qca8k.h b/drivers/net/dsa/qca8k.h
-index 7ca4b93e0bb5..e0b679133880 100644
 --- a/drivers/net/dsa/qca8k.h
 +++ b/drivers/net/dsa/qca8k.h
 @@ -32,12 +32,11 @@
@@ -50,6 +46,3 @@ index 7ca4b93e0bb5..e0b679133880 100644
  #define   QCA8K_PORT_PAD_SGMII_EN			BIT(7)
  #define QCA8K_REG_PWS					0x010
  #define   QCA8K_PWS_SERDES_AEN_DIS			BIT(7)
--- 
-2.29.2
-

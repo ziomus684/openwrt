@@ -12,15 +12,12 @@ Signed-off-by: Ansuel Smith <ansuelsmth@gmail.com>
  drivers/net/dsa/qca8k.h |  5 +++++
  2 files changed, 30 insertions(+)
 
-diff --git a/drivers/net/dsa/qca8k.c b/drivers/net/dsa/qca8k.c
-index 2246d168ffff..2bb48962ab69 100644
 --- a/drivers/net/dsa/qca8k.c
 +++ b/drivers/net/dsa/qca8k.c
-@@ -697,6 +697,27 @@ qca8k_setup_mdio_bus(struct qca8k_priv *priv)
- 	return 0;
+@@ -698,6 +698,27 @@ qca8k_setup_mdio_bus(struct qca8k_priv *
  }
  
-+static int
+ static int
 +qca8k_setup_mac_pwr_sel(struct qca8k_priv *priv)
 +{
 +	struct device_node *node = priv->dev->of_node;
@@ -41,9 +38,10 @@ index 2246d168ffff..2bb48962ab69 100644
 +	return 0;
 +}
 +
- static int
++static int
  qca8k_setup(struct dsa_switch *ds)
  {
+ 	struct qca8k_priv *priv = (struct qca8k_priv *)ds->priv;
 @@ -828,6 +849,10 @@ qca8k_setup(struct dsa_switch *ds)
  				mask);
  	}
@@ -55,8 +53,6 @@ index 2246d168ffff..2bb48962ab69 100644
  	/* Flush the FDB table */
  	qca8k_fdb_flush(priv);
  
-diff --git a/drivers/net/dsa/qca8k.h b/drivers/net/dsa/qca8k.h
-index 0ff7abbd40dc..003f9a340706 100644
 --- a/drivers/net/dsa/qca8k.h
 +++ b/drivers/net/dsa/qca8k.h
 @@ -94,6 +94,11 @@
@@ -71,6 +67,3 @@ index 0ff7abbd40dc..003f9a340706 100644
  /* EEE control registers */
  #define QCA8K_REG_EEE_CTRL				0x100
  #define  QCA8K_REG_EEE_CTRL_LPI_EN(_i)			((_i + 1) * 2)
--- 
-2.30.0
-

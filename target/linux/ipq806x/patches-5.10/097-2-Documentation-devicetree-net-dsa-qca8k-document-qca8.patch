@@ -11,8 +11,6 @@ Signed-off-by: Ansuel Smith <ansuelsmth@gmail.com>
  Documentation/devicetree/bindings/net/dsa/qca8k.txt | 6 ++++++
  1 file changed, 6 insertions(+)
 
-diff --git a/Documentation/devicetree/bindings/net/dsa/qca8k.txt b/Documentation/devicetree/bindings/net/dsa/qca8k.txt
-index 148da30299c3..4cfc2a7c917b 100644
 --- a/Documentation/devicetree/bindings/net/dsa/qca8k.txt
 +++ b/Documentation/devicetree/bindings/net/dsa/qca8k.txt
 @@ -13,6 +13,12 @@ Optional properties:
@@ -28,6 +26,3 @@ index 148da30299c3..4cfc2a7c917b 100644
  - qca8k,rgmii0_1_8v: Set the internal regulator to supply 1.8v for MAC0 port
  - qca8k,rgmii56_1_8v: Set the internal regulator to supply 1.8v for MAC5/6 port
  
--- 
-2.30.0
-

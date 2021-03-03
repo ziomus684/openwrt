@@ -14,15 +14,12 @@ Signed-off-by: Ansuel Smith <ansuelsmth@gmail.com>
  drivers/net/dsa/qca8k.h | 10 ++++++++
  2 files changed, 62 insertions(+)
 
-diff --git a/drivers/net/dsa/qca8k.c b/drivers/net/dsa/qca8k.c
-index 868f001e2867..a72e89019c91 100644
 --- a/drivers/net/dsa/qca8k.c
 +++ b/drivers/net/dsa/qca8k.c
-@@ -718,6 +718,54 @@ qca8k_setup_mac_pwr_sel(struct qca8k_priv *priv)
- 	return 0;
+@@ -719,6 +719,54 @@ qca8k_setup_mac_pwr_sel(struct qca8k_pri
  }
  
-+static int
+ static int
 +qca8k_setup_led_ctrl(struct qca8k_priv *priv)
 +{
 +	struct device_node *node = priv->dev->of_node;
@@ -70,9 +67,10 @@ index 868f001e2867..a72e89019c91 100644
 +	return 0;
 +}
 +
- static int
++static int
  qca8k_setup(struct dsa_switch *ds)
  {
+ 	struct qca8k_priv *priv = (struct qca8k_priv *)ds->priv;
 @@ -874,6 +922,10 @@ qca8k_setup(struct dsa_switch *ds)
  	if (ret < 0)
  		return ret;
@@ -84,8 +82,6 @@ index 868f001e2867..a72e89019c91 100644
  	/* Flush the FDB table */
  	qca8k_fdb_flush(priv);
  
-diff --git a/drivers/net/dsa/qca8k.h b/drivers/net/dsa/qca8k.h
-index 8c80b04313e2..f3ce402f6d96 100644
 --- a/drivers/net/dsa/qca8k.h
 +++ b/drivers/net/dsa/qca8k.h
 @@ -61,6 +61,16 @@
@@ -105,6 +101,3 @@ index 8c80b04313e2..f3ce402f6d96 100644
  #define QCA8K_GOL_MAC_ADDR0				0x60
  #define QCA8K_GOL_MAC_ADDR1				0x64
  #define QCA8K_MAX_FRAME_SIZE				0x78
--- 
-2.30.0
-

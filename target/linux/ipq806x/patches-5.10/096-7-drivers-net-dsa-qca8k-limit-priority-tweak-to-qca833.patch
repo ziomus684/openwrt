@@ -12,11 +12,9 @@ Signed-off-by: Ansuel Smith <ansuelsmth@gmail.com>
  drivers/net/dsa/qca8k.c | 84 +++++++++++++++++++++++------------------
  1 file changed, 48 insertions(+), 36 deletions(-)
 
-diff --git a/drivers/net/dsa/qca8k.c b/drivers/net/dsa/qca8k.c
-index 1cde5c703fe7..2da6728aa8c6 100644
 --- a/drivers/net/dsa/qca8k.c
 +++ b/drivers/net/dsa/qca8k.c
-@@ -726,9 +726,13 @@ static int
+@@ -722,9 +722,13 @@ static int
  qca8k_setup(struct dsa_switch *ds)
  {
  	struct qca8k_priv *priv = (struct qca8k_priv *)ds->priv;
@@ -30,7 +28,7 @@ index 1cde5c703fe7..2da6728aa8c6 100644
  	/* Make sure that port 0 is the cpu port */
  	if (!dsa_is_cpu_port(ds, 0)) {
  		pr_err("port 0 is not the CPU port\n");
-@@ -815,41 +819,43 @@ qca8k_setup(struct dsa_switch *ds)
+@@ -812,41 +816,43 @@ qca8k_setup(struct dsa_switch *ds)
  	 * To fix this the original code has some specific priority values
  	 * suggested by the QCA switch team.
  	 */
@@ -108,7 +106,7 @@ index 1cde5c703fe7..2da6728aa8c6 100644
  	}
  
  	ret = qca8k_setup_mac_pwr_sel(priv);
-@@ -869,9 +875,13 @@ static void
+@@ -866,9 +872,13 @@ static void
  qca8k_phylink_mac_config(struct dsa_switch *ds, int port, unsigned int mode,
  			 const struct phylink_link_state *state)
  {
@@ -122,7 +120,7 @@ index 1cde5c703fe7..2da6728aa8c6 100644
  	switch (port) {
  	case 0: /* 1st CPU port */
  		if (state->interface != PHY_INTERFACE_MODE_RGMII &&
-@@ -924,8 +934,10 @@ qca8k_phylink_mac_config(struct dsa_switch *ds, int port, unsigned int mode,
+@@ -921,8 +931,10 @@ qca8k_phylink_mac_config(struct dsa_swit
  			    QCA8K_PORT_PAD_RGMII_RX_DELAY(2) |
  			    QCA8K_PORT_PAD_RGMII_TX_DELAY_EN |
  			    QCA8K_PORT_PAD_RGMII_RX_DELAY_EN);
@@ -135,6 +133,3 @@ index 1cde5c703fe7..2da6728aa8c6 100644
  		break;
  	case PHY_INTERFACE_MODE_SGMII:
  	case PHY_INTERFACE_MODE_1000BASEX:
--- 
-2.29.2
-

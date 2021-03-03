@@ -27,8 +27,6 @@ Signed-off-by: Ansuel Smith <ansuelsmth@gmail.com>
  3 files changed, 604 insertions(+), 1 deletion(-)
  create mode 100644 drivers/cpufreq/qcom-cpufreq-krait.c
 
-diff --git a/drivers/cpufreq/Kconfig.arm b/drivers/cpufreq/Kconfig.arm
-index 1f73fa75b1a0..671b2b0b4d63 100644
 --- a/drivers/cpufreq/Kconfig.arm
 +++ b/drivers/cpufreq/Kconfig.arm
 @@ -150,6 +150,18 @@ config ARM_QCOM_CPUFREQ_HW
@@ -57,11 +55,9 @@ index 1f73fa75b1a0..671b2b0b4d63 100644
 -	  If in doubt, say N.
 +	  If in doubt, say N.
 \ No newline at end of file
-diff --git a/drivers/cpufreq/Makefile b/drivers/cpufreq/Makefile
-index f1b7e3dd6e5d..1bb8f66dfd17 100644
 --- a/drivers/cpufreq/Makefile
 +++ b/drivers/cpufreq/Makefile
-@@ -63,6 +63,7 @@ obj-$(CONFIG_ARM_PXA2xx_CPUFREQ)	+= pxa2xx-cpufreq.o
+@@ -63,6 +63,7 @@ obj-$(CONFIG_ARM_PXA2xx_CPUFREQ)	+= pxa2
  obj-$(CONFIG_PXA3xx)			+= pxa3xx-cpufreq.o
  obj-$(CONFIG_ARM_QCOM_CPUFREQ_HW)	+= qcom-cpufreq-hw.o
  obj-$(CONFIG_ARM_QCOM_CPUFREQ_NVMEM)	+= qcom-cpufreq-nvmem.o
@@ -69,7 +65,7 @@ index f1b7e3dd6e5d..1bb8f66dfd17 100644
  obj-$(CONFIG_ARM_RASPBERRYPI_CPUFREQ) 	+= raspberrypi-cpufreq.o
  obj-$(CONFIG_ARM_S3C2410_CPUFREQ)	+= s3c2410-cpufreq.o
  obj-$(CONFIG_ARM_S3C2412_CPUFREQ)	+= s3c2412-cpufreq.o
-@@ -86,6 +87,7 @@ obj-$(CONFIG_ARM_TEGRA186_CPUFREQ)	+= tegra186-cpufreq.o
+@@ -86,6 +87,7 @@ obj-$(CONFIG_ARM_TEGRA186_CPUFREQ)	+= te
  obj-$(CONFIG_ARM_TEGRA194_CPUFREQ)	+= tegra194-cpufreq.o
  obj-$(CONFIG_ARM_TI_CPUFREQ)		+= ti-cpufreq.o
  obj-$(CONFIG_ARM_VEXPRESS_SPC_CPUFREQ)	+= vexpress-spc-cpufreq.o
@@ -77,9 +73,6 @@ index f1b7e3dd6e5d..1bb8f66dfd17 100644
  
  
  ##################################################################################
-diff --git a/drivers/cpufreq/qcom-cpufreq-krait.c b/drivers/cpufreq/qcom-cpufreq-krait.c
-new file mode 100644
-index 000000000000..218070116303
 --- /dev/null
 +++ b/drivers/cpufreq/qcom-cpufreq-krait.c
 @@ -0,0 +1,589 @@
@@ -672,6 +665,3 @@ index 000000000000..218070116303
 +MODULE_AUTHOR("Ansuel Smith <ansuelsmth@gmail.com>");
 +MODULE_DESCRIPTION("Dedicated Krait SoC cpufreq driver");
 +MODULE_LICENSE("GPL");
--- 
-2.29.2
-

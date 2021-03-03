@@ -14,19 +14,17 @@ Signed-off-by: Ansuel Smith <ansuelsmth@gmail.com>
  drivers/net/dsa/qca8k.h | 24 ++++++++++++++++++++++++
  2 files changed, 65 insertions(+)
 
-diff --git a/drivers/net/dsa/qca8k.c b/drivers/net/dsa/qca8k.c
-index f71b8e7bcc1e..49c82fd029cd 100644
 --- a/drivers/net/dsa/qca8k.c
 +++ b/drivers/net/dsa/qca8k.c
-@@ -728,6 +728,7 @@ qca8k_setup(struct dsa_switch *ds)
+@@ -702,6 +702,7 @@ qca8k_setup(struct dsa_switch *ds)
+ {
  	struct qca8k_priv *priv = (struct qca8k_priv *)ds->priv;
- 	const struct qca8k_match_data *data;
  	int ret, i;
 +	u32 mask;
  
  	/* Make sure that port 0 is the cpu port */
  	if (!dsa_is_cpu_port(ds, 0)) {
-@@ -786,6 +786,47 @@ qca8k_setup(struct dsa_switch *ds)
+@@ -786,6 +787,47 @@ qca8k_setup(struct dsa_switch *ds)
  		priv->port_mtu[i] = ETH_FRAME_LEN + ETH_FCS_LEN;
  	qca8k_write(priv, QCA8K_MAX_FRAME_SIZE, ETH_FRAME_LEN + ETH_FCS_LEN);
  
@@ -74,8 +72,6 @@ index f71b8e7bcc1e..49c82fd029cd 100644
  	/* Flush the FDB table */
  	qca8k_fdb_flush(priv);
  
-diff --git a/drivers/net/dsa/qca8k.h b/drivers/net/dsa/qca8k.h
-index e0b679133880..0ff7abbd40dc 100644
 --- a/drivers/net/dsa/qca8k.h
 +++ b/drivers/net/dsa/qca8k.h
 @@ -163,6 +163,30 @@
@@ -109,6 +105,3 @@ index e0b679133880..0ff7abbd40dc 100644
  /* Pkt edit registers */
  #define QCA8K_EGRESS_VLAN(x)				(0x0c70 + (4 * (x / 2)))
  
--- 
-2.29.2
-

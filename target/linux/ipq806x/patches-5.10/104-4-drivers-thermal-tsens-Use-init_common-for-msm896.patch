@@ -10,11 +10,9 @@ Signed-off-by: Ansuel Smith <ansuelsmth@gmail.com>
  drivers/thermal/qcom/tsens-8960.c | 52 +------------------------------
  1 file changed, 1 insertion(+), 51 deletions(-)
 
-diff --git a/drivers/thermal/qcom/tsens-8960.c b/drivers/thermal/qcom/tsens-8960.c
-index 3f4fc1ffe679..86585f439985 100644
 --- a/drivers/thermal/qcom/tsens-8960.c
 +++ b/drivers/thermal/qcom/tsens-8960.c
-@@ -173,56 +173,6 @@ static void disable_8960(struct tsens_priv *priv)
+@@ -173,56 +173,6 @@ static void disable_8960(struct tsens_pr
  	regmap_write(priv->tm_map, CNTL_ADDR, reg_cntl);
  }
  
@@ -71,7 +69,7 @@ index 3f4fc1ffe679..86585f439985 100644
  static int calibrate_8960(struct tsens_priv *priv)
  {
  	int i;
-@@ -346,7 +296,7 @@ static const struct reg_field tsens_8960_regfields[MAX_REGFIELDS] = {
+@@ -346,7 +296,7 @@ static const struct reg_field tsens_8960
  };
  
  static const struct tsens_ops ops_8960 = {
@@ -80,6 +78,3 @@ index 3f4fc1ffe679..86585f439985 100644
  	.calibrate	= calibrate_8960,
  	.get_temp	= get_temp_8960,
  	.enable		= enable_8960,
--- 
-2.30.0
-

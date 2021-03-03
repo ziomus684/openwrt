@@ -13,8 +13,6 @@ Signed-off-by: Ansuel Smith <ansuelsmth@gmail.com>
  drivers/thermal/qcom/tsens-8960.c | 19 +++++++++++++++++--
  1 file changed, 17 insertions(+), 2 deletions(-)
 
-diff --git a/drivers/thermal/qcom/tsens-8960.c b/drivers/thermal/qcom/tsens-8960.c
-index 86585f439985..248aaa65b5b0 100644
 --- a/drivers/thermal/qcom/tsens-8960.c
 +++ b/drivers/thermal/qcom/tsens-8960.c
 @@ -27,9 +27,9 @@
@@ -28,7 +26,7 @@ index 86585f439985..248aaa65b5b0 100644
  #define SENSOR0_SHIFT		3
  
  /* INT_STATUS_ADDR bitmasks */
-@@ -132,11 +132,26 @@ static int enable_8960(struct tsens_priv *priv, int id)
+@@ -132,11 +132,26 @@ static int enable_8960(struct tsens_priv
  	if (ret)
  		return ret;
  
@@ -56,6 +54,3 @@ index 86585f439985..248aaa65b5b0 100644
  	if (priv->num_sensors > 1)
  		reg |= mask | SLP_CLK_ENA | EN;
  	else
--- 
-2.30.0
-

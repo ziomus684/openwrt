@@ -12,11 +12,9 @@ Signed-off-by: Ansuel Smith <ansuelsmth@gmail.com>
  drivers/net/dsa/qca8k.h | 1 +
  2 files changed, 6 insertions(+)
 
-diff --git a/drivers/net/dsa/qca8k.c b/drivers/net/dsa/qca8k.c
-index 11e903eb8161..5b0fdefbc3d6 100644
 --- a/drivers/net/dsa/qca8k.c
 +++ b/drivers/net/dsa/qca8k.c
-@@ -726,6 +726,7 @@ static int
+@@ -722,6 +722,7 @@ static int
  qca8k_setup(struct dsa_switch *ds)
  {
  	struct qca8k_priv *priv = (struct qca8k_priv *)ds->priv;
@@ -24,7 +22,7 @@ index 11e903eb8161..5b0fdefbc3d6 100644
  	const struct qca8k_match_data *data;
  	int ret, i;
  	u32 mask;
-@@ -869,6 +870,10 @@ qca8k_setup(struct dsa_switch *ds)
+@@ -865,6 +866,10 @@ qca8k_setup(struct dsa_switch *ds)
  					mask);
  	}
  
@@ -35,8 +33,6 @@ index 11e903eb8161..5b0fdefbc3d6 100644
  	ret = qca8k_setup_mac_pwr_sel(priv);
  	if (ret < 0)
  		return ret;
-diff --git a/drivers/net/dsa/qca8k.h b/drivers/net/dsa/qca8k.h
-index 4b5fef160833..8c80b04313e2 100644
 --- a/drivers/net/dsa/qca8k.h
 +++ b/drivers/net/dsa/qca8k.h
 @@ -31,6 +31,7 @@
@@ -47,6 +43,3 @@ index 4b5fef160833..8c80b04313e2 100644
  #define QCA8K_REG_PORT5_PAD_CTRL			0x008
  #define QCA8K_REG_PORT6_PAD_CTRL			0x00c
  #define   QCA8K_PORT_PAD_RGMII_EN			BIT(26)
--- 
-2.30.0
-
