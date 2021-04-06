@@ -14,4 +14,12 @@ boot() {
     echo 10 > /sys/devices/system/cpu/cpufreq/ondemand/sampling_down_factor
     echo 50 > /sys/devices/system/cpu/cpufreq/ondemand/up_threshold
   fi
+
+  # Restore original implementation where the eth0 was used for the lan port
+  # and the eth2 was used for the wan port
+  ip link set lan1 link eth0
+  ip link set lan2 link eth0
+  ip link set lan3 link eth0
+  ip link set lan4 link eth0
+  ip link set wan link eth1
 }
