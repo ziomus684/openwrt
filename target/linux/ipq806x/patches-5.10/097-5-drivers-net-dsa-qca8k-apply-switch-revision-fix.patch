@@ -1,0 +1,59 @@
+From 7ab07f42313fca253dbeaf92e7341f5ae8fb8c4f Mon Sep 17 00:00:00 2001
+From: Ansuel Smith <ansuelsmth@gmail.com>
+Date: Sun, 4 Apr 2021 04:49:09 +0200
+Subject: [PATCH 3/3] drivers: net: dsa: qca8k: apply switch revision fix
+
+qca8k require special debug value based on the switch revision.
+
+Signed-off-by: Ansuel Smith <ansuelsmth@gmail.com>
+---
+ drivers/net/dsa/qca8k.c | 20 ++++++++++++++++++++
+ drivers/net/dsa/qca8k.h |  1 +
+ 2 files changed, 21 insertions(+)
+
+diff --git a/drivers/net/dsa/qca8k.c b/drivers/net/dsa/qca8k.c
+index fa1699d9ef75..a9361b0d22ec 100644
+--- a/drivers/net/dsa/qca8k.c
++++ b/drivers/net/dsa/qca8k.c
+@@ -829,6 +829,26 @@ qca8k_setup(struct dsa_switch *ds)
+ 	/* get the switches ID from the compatible */
+ 	data = of_device_get_match_data(priv->dev);
+ 
++	for (i = 0; i < QCA8K_NUM_PHYS; i++)
++		switch (priv->switch_revision) {
++		case 1:
++			/* For 100M waveform */
++			qca8k_phy_dbg_write(priv, i, 0, 0x02ea);
++			/* Turn on Gigabit clock */
++			qca8k_phy_dbg_write(priv, i, 0x3d, 0x68a0);
++			break;
++
++		case 2:
++			qca8k_phy_mmd_write(priv, i, 0x7, 0x3c, 0x0);
++			/* fallthrough */
++		case 4:
++			qca8k_phy_mmd_write(priv, i, 0x3, 0x800d, 0x803f);
++			qca8k_phy_dbg_write(priv, i, 0x3d, 0x6860);
++			qca8k_phy_dbg_write(priv, i, 0x5, 0x2c46);
++			qca8k_phy_dbg_write(priv, i, 0x3c, 0x6000);
++			break;
++		}
++
+ 	/* Make sure that port 0 is the cpu port */
+ 	if (!dsa_is_cpu_port(ds, 0)) {
+ 		pr_err("port 0 is not the CPU port\n");
+diff --git a/drivers/net/dsa/qca8k.h b/drivers/net/dsa/qca8k.h
+index cef65c4ff5e3..79d8ef710098 100644
+--- a/drivers/net/dsa/qca8k.h
++++ b/drivers/net/dsa/qca8k.h
+@@ -12,6 +12,7 @@
+ #include <linux/regmap.h>
+ #include <linux/gpio.h>
+ 
++#define QCA8K_NUM_PHYS					5
+ #define QCA8K_NUM_PORTS					7
+ #define QCA8K_MAX_MTU					9000
+ 
+-- 
+2.30.2
+

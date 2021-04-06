@@ -1,0 +1,98 @@
+From e01be3b8ff14350e85e65355883dc73afff56bf9 Mon Sep 17 00:00:00 2001
+From: Ansuel Smith <ansuelsmth@gmail.com>
+Date: Sun, 4 Apr 2021 04:25:59 +0200
+Subject: [PATCH 2/3] drivers: net: dsa: qca8k: add support for specific ath
+ access function
+
+Some qca8k switch revision require some special dbg value to be set
+based on the revision number. Add required function to write and read in
+these specific registers.
+
+Signed-off-by: Ansuel Smith <ansuelsmth@gmail.com>
+---
+ drivers/net/dsa/qca8k.c | 51 +++++++++++++++++++++++++++++++++++++++++
+ drivers/net/dsa/qca8k.h |  6 +++++
+ 2 files changed, 57 insertions(+)
+
+diff --git a/drivers/net/dsa/qca8k.c b/drivers/net/dsa/qca8k.c
+index 07cc4ace75d0..fa1699d9ef75 100644
+--- a/drivers/net/dsa/qca8k.c
++++ b/drivers/net/dsa/qca8k.c
+@@ -69,6 +69,57 @@ static const struct qca8k_mib_desc ar8327_mib[] = {
+ 	MIB_DESC(1, 0xa4, "TxLateCol"),
+ };
+ 
++/* Atheros specific MII registers access function */
++void qca8k_phy_dbg_read(struct qca8k_priv *priv, int phy_addr, u16 dbg_addr, u16 *dbg_data)
++{
++	struct mii_bus *bus = priv->bus;
++
++	mutex_lock_nested(&bus->mdio_lock, MDIO_MUTEX_NESTED);
++	bus->write(bus, phy_addr, QCA8K_MII_ATH_DBG_ADDR, dbg_addr);
++	*dbg_data = bus->read(bus, phy_addr, QCA8K_MII_ATH_DBG_DATA);
++	mutex_unlock(&bus->mdio_lock);
++}
++
++void qca8k_phy_dbg_write(struct qca8k_priv *priv, int phy_addr, u16 dbg_addr, u16 dbg_data)
++{
++	struct mii_bus *bus = priv->bus;
++
++	mutex_lock_nested(&bus->mdio_lock, MDIO_MUTEX_NESTED);
++	bus->write(bus, phy_addr, QCA8K_MII_ATH_DBG_ADDR, dbg_addr);
++	bus->write(bus, phy_addr, QCA8K_MII_ATH_DBG_DATA, dbg_data);
++	mutex_unlock(&bus->mdio_lock);
++}
++
++static inline void qca8k_phy_mmd_prep(struct mii_bus *bus, int phy_addr, u16 addr, u16 reg)
++{
++	bus->write(bus, phy_addr, QCA8K_MII_ATH_MMD_ADDR, addr);
++	bus->write(bus, phy_addr, QCA8K_MII_ATH_MMD_DATA, reg);
++	bus->write(bus, phy_addr, QCA8K_MII_ATH_MMD_ADDR, addr | 0x4000);
++}
++
++void qca8k_phy_mmd_write(struct qca8k_priv *priv, int phy_addr, u16 addr, u16 reg, u16 data)
++{
++	struct mii_bus *bus = priv->bus;
++
++	mutex_lock_nested(&bus->mdio_lock, MDIO_MUTEX_NESTED);
++	qca8k_phy_mmd_prep(bus, phy_addr, addr, reg);
++	bus->write(bus, phy_addr, QCA8K_MII_ATH_MMD_DATA, data);
++	mutex_unlock(&bus->mdio_lock);
++}
++
++u16 qca8k_phy_mmd_read(struct qca8k_priv *priv, int phy_addr, u16 addr, u16 reg)
++{
++	struct mii_bus *bus = priv->bus;
++	u16 data;
++
++	mutex_lock_nested(&bus->mdio_lock, MDIO_MUTEX_NESTED);
++	qca8k_phy_mmd_prep(bus, phy_addr, addr, reg);
++	data = bus->read(bus, phy_addr, QCA8K_MII_ATH_MMD_DATA);
++	mutex_unlock(&bus->mdio_lock);
++
++	return data;
++}
++
+ /* The 32bit switch registers are accessed indirectly. To achieve this we need
+  * to set the page of the register. Track the last page that was set to reduce
+  * mdio writes
+diff --git a/drivers/net/dsa/qca8k.h b/drivers/net/dsa/qca8k.h
+index c215c3090257..cef65c4ff5e3 100644
+--- a/drivers/net/dsa/qca8k.h
++++ b/drivers/net/dsa/qca8k.h
+@@ -26,6 +26,12 @@
+ 
+ #define QCA8K_PORT_VID_DEF				1
+ 
++/* Atheros specific MII registers */
++#define QCA8K_MII_ATH_MMD_ADDR				0x0d
++#define QCA8K_MII_ATH_MMD_DATA				0x0e
++#define QCA8K_MII_ATH_DBG_ADDR				0x1d
++#define QCA8K_MII_ATH_DBG_DATA				0x1e
++
+ /* Global control registers */
+ #define QCA8K_REG_MASK_CTRL				0x000
+ #define   QCA8K_MASK_CTRL_REV_ID_M			GENMASK(7, 0)
+-- 
+2.30.2
+

@@ -1,0 +1,95 @@
+From 16738929f64342ccbcdb84cceb30322873ff7f92 Mon Sep 17 00:00:00 2001
+From: Ansuel Smith <ansuelsmth@gmail.com>
+Date: Tue, 23 Mar 2021 03:15:12 +0100
+Subject: [PATCH 1/3] drivers: net: dsa: qca8k: add support for switch rev
+
+qca8k switch require some special debug value to be set based on the
+switch revision. Rework the switch id read function to also read the
+chip revision and make it accessible to the switch data.
+
+Signed-off-by: Ansuel Smith <ansuelsmth@gmail.com>
+---
+ drivers/net/dsa/qca8k.c | 23 ++++++++++++++++++-----
+ drivers/net/dsa/qca8k.h |  9 ++++++---
+ 2 files changed, 24 insertions(+), 8 deletions(-)
+
+diff --git a/drivers/net/dsa/qca8k.c b/drivers/net/dsa/qca8k.c
+index a72e89019c91..07cc4ace75d0 100644
+--- a/drivers/net/dsa/qca8k.c
++++ b/drivers/net/dsa/qca8k.c
+@@ -1552,12 +1552,26 @@ static const struct dsa_switch_ops qca8k_switch_ops = {
+ 	.phylink_mac_link_up	= qca8k_phylink_mac_link_up,
+ };
+ 
++static u16 qca8k_read_switch_id(struct qca8k_priv *priv)
++{
++	u32 val;
++	u16 id;
++
++	val = qca8k_read(priv, QCA8K_REG_MASK_CTRL);
++
++	id = val & (QCA8K_MASK_CTRL_REV_ID_M | QCA8K_MASK_CTRL_DEVICE_ID_M);
++
++	priv->switch_revision = (id & QCA8K_MASK_CTRL_REV_ID_M);
++
++	return (id & QCA8K_MASK_CTRL_DEVICE_ID_M) >> QCA8K_MASK_CTRL_DEVICE_ID_S;
++}
++
+ static int
+ qca8k_sw_probe(struct mdio_device *mdiodev)
+ {
+ 	const struct qca8k_match_data *data;
+ 	struct qca8k_priv *priv;
+-	u32 id;
++	u16 id;
+ 
+ 	/* allocate the private data struct so that we can probe the switches
+ 	 * ID register
+@@ -1589,11 +1603,10 @@ qca8k_sw_probe(struct mdio_device *mdiodev)
+ 		return -ENODEV;
+ 
+ 	/* read the switches ID register */
+-	id = qca8k_read(priv, QCA8K_REG_MASK_CTRL);
+-	id >>= QCA8K_MASK_CTRL_ID_S;
+-	id &= QCA8K_MASK_CTRL_ID_M;
++	id = qca8k_read_switch_id(priv);
+ 	if (id != data->id)
+-		return -ENODEV;
++		pr_err("WRONG SWITCH ID READ. READED %d EXPECTED %d", id , data->id);
++		// return -ENODEV;
+ 
+ 	priv->ds = devm_kzalloc(&mdiodev->dev, sizeof(*priv->ds), GFP_KERNEL);
+ 	if (!priv->ds)
+diff --git a/drivers/net/dsa/qca8k.h b/drivers/net/dsa/qca8k.h
+index f3ce402f6d96..c215c3090257 100644
+--- a/drivers/net/dsa/qca8k.h
++++ b/drivers/net/dsa/qca8k.h
+@@ -28,8 +28,10 @@
+ 
+ /* Global control registers */
+ #define QCA8K_REG_MASK_CTRL				0x000
+-#define   QCA8K_MASK_CTRL_ID_M				0xff
+-#define   QCA8K_MASK_CTRL_ID_S				8
++#define   QCA8K_MASK_CTRL_REV_ID_M			GENMASK(7, 0)
++#define   QCA8K_MASK_CTRL_REV_ID_S			0
++#define   QCA8K_MASK_CTRL_DEVICE_ID_M			GENMASK(15, 8)
++#define   QCA8K_MASK_CTRL_DEVICE_ID_S			8
+ #define QCA8K_REG_PORT0_PAD_CTRL			0x004
+ #define   QCA8K_PORT_PAD0_MAC6_EXCHANGE_EN		BIT(31)
+ #define QCA8K_REG_PORT5_PAD_CTRL			0x008
+@@ -259,10 +261,11 @@ struct ar8xxx_port_status {
+ };
+ 
+ struct qca8k_match_data {
+-	u32 id;
++	u16 id;
+ };
+ 
+ struct qca8k_priv {
++	u16 switch_revision;
+ 	struct regmap *regmap;
+ 	struct mii_bus *bus;
+ 	struct ar8xxx_port_status port_sts[QCA8K_NUM_PORTS];
+-- 
+2.30.2
+
