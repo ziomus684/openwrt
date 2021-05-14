@@ -43,30 +43,33 @@ TOOLCHAIN_BIN_PATH=$(TOOLCHAIN_DIR)/bin
 endif
 
 ifdef CONFIG_TARGET_NAME
-QCASSDK_CONFIG_OPTS+= \
+MAKE_FLAGS+= \
 		      TARGET_NAME=$(CONFIG_TARGET_NAME)
 endif
 
-SSDK_CFLAGS="-I$(STAGING_DIR)/usr/include -DMODULE -Os -pipe -march=armv8-a -mcpu=cortex-a53+crypto -fno-caller-saves -fno-strict-aliasing -Werror -fno-common -Wno-format-security -Wno-pointer-sign -Wno-unused-but-set-variable -Wno-error=unused-result -mcmodel=large"
-
-QCASSDK_CONFIG_OPTS+= TOOL_PATH=$(TOOLCHAIN_BIN_PATH) \
+MAKE_FLAGS+= TOOL_PATH=$(TOOLCHAIN_BIN_PATH) \
                 SYS_PATH=$(LINUX_DIR) \
                 TOOLPREFIX=$(TARGET_CROSS) \
                 KVER=$(LINUX_VERSION) \
                 ARCH=$(LINUX_KARCH) \
 		TARGET_SUFFIX=$(CONFIG_TARGET_SUFFIX) \
 		GCC_VERSION=$(GCC_VERSION) \
-		EXTRA_CFLAGS=$(SSDK_CFLAGS) \
+		CFLAGS=-I$(STAGING_DIR)/usr/include \
 		$(KERNEL_MAKE_FLAGS)
 
 ifneq (, $(findstring $(CONFIG_TARGET_BOARD), "ipq60xx" "ipq807x"))
-    QCASSDK_CONFIG_OPTS+= PTP_FEATURE=disable SWCONFIG_FEATURE=disable
+    MAKE_FLAGS+= PTP_FEATURE=disable SWCONFIG_FEATURE=disable
 endif
 
 ifeq ($(CONFIG_TARGET_BOARD), "ipq807x")
-    QCASSDK_CONFIG_OPTS+= CHIP_TYPE=HPPE
-else ifeq ($(CONFIG_TARGET_BOARD), "ipq60xx")
-    QCASSDK_CONFIG_OPTS+= CHIP_TYPE=CPPE
+    MAKE_FLAGS+= CHIP_TYPE=HPPE
+endif
+ifeq ($(CONFIG_TARGET_ipq806x_QSDK_Standard),)
+    MAKE_FLAGS+= HK_CHIP=enable
+endif
+
+ifeq ($(CONFIG_TARGET_BOARD), "ipq60xx")
+    MAKE_FLAGS+= CHIP_TYPE=CPPE
 endif
 
 define Build/InstallDev
@@ -94,10 +97,6 @@ define Build/InstallDev
 	$(CP) -rf $(PKG_BUILD_DIR)/include/sal/os/linux/*.h $(1)/usr/include/qca-ssdk
 	$(CP) -rf $(PKG_BUILD_DIR)/include/sal/os/*.h $(1)/usr/include/qca-ssdk
 
-endef
-
-define Build/Compile
-	$(MAKE) -C $(PKG_BUILD_DIR) $(strip $(QCASSDK_CONFIG_OPTS))
 endef
 
 define KernelPackage/qca-ssdk-nohnat/install
