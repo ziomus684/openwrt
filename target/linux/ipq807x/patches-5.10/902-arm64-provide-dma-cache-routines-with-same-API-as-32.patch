@@ -1,6 +1,6 @@
-From 181e506248fd24a0febbfbd794bba43a7b346115 Mon Sep 17 00:00:00 2001
-From: Kathiravan T <kathirav@codeaurora.org>
-Date: Fri, 17 Jan 2014 10:33:08 -0800
+From 60c5fb63f3e20a12c21062ef249bfe4554cd5482 Mon Sep 17 00:00:00 2001
+From: Ansuel Smith <ansuelsmth@gmail.com>
+Date: Fri, 14 May 2021 00:29:01 +0200
 Subject: [PATCH] arm64: provide dma cache routines with same API as 32 bit
 
 The APIs __dma_inv_range() and __dma_clean_range() were
@@ -8,39 +8,21 @@ not exported by the third party patch. Since the functions
 starting with underscores are not to be directly used by drivers,
 related functions without the underscores are provided
 which have the same name and functionality as the 32 bit APIs.
+Drop __dma_inv_area and __dma_clean_area to be LOCAL as they are used
+elsewhere and export them.
 
-CRs-Fixed: 1053067
-Change-Id: Ie0e681614307d9d9a19e58cacfb9b5dff4528977
-
-arm64: add defines for dmac_*_range for compatibility with arm32
-
-An earlier patch created defines for dma_*_range APIs to be
-compatible with arm 32 bit, however it appears
-these API names have not (at least yet) appeared there, so
-revise the names to dmac_*_range, which is defined
-for arm 32 bit so that there is one name defined
-for both architectures.
-
-CRs-Fixed: 1053067
-Signed-off-by: Larry Bassel <lbassel@codeaurora.org>
-(cherry picked from commit 0930bab0db67cc0d91e52e385e3e061871c6be05)
-[psodagud: fixed up trivial merge conflicts and warnings]
-Signed-off-by: Prasad Sodagudi <psodagud@codeaurora.org>
-
-(cherry picked from commit a313e54567627a1fd96cd267e2c6c358d14e468c)
-[kathirav: fixed the trivial conflicts]
-
-Change-Id: I6456c02bad73fb54a874dc9925d3d43d9b8be2f2
-Signed-off-by: Kathiravan T <kathirav@codeaurora.org>
+Signed-off-by: Ansuel Smith <ansuelsmth@gmail.com>
 ---
  arch/arm64/include/asm/cacheflush.h | 9 +++++++++
- 1 file changed, 9 insertions(+)
+ arch/arm64/mm/cache.S               | 4 ++--
+ arch/arm64/mm/flush.c               | 2 ++
+ 3 files changed, 13 insertions(+), 2 deletions(-)
 
 diff --git a/arch/arm64/include/asm/cacheflush.h b/arch/arm64/include/asm/cacheflush.h
-index 9384fd8fc13c..b04d2f94d9b1 100644
+index 52e5c1623224..1c7ea0847352 100644
 --- a/arch/arm64/include/asm/cacheflush.h
 +++ b/arch/arm64/include/asm/cacheflush.h
-@@ -102,6 +102,15 @@ static inline void flush_icache_range(unsigned long start, unsigned long end)
+@@ -97,6 +97,15 @@ static inline void flush_icache_range(unsigned long start, unsigned long end)
  extern void __dma_map_area(const void *, size_t, int);
  extern void __dma_unmap_area(const void *, size_t, int);
  extern void __dma_flush_area(const void *, size_t);
@@ -56,6 +38,41 @@ index 9384fd8fc13c..b04d2f94d9b1 100644
  
  /*
   * Copy user data from/to a page which is mapped into a different
+diff --git a/arch/arm64/mm/cache.S b/arch/arm64/mm/cache.S
+index 2d881f34dd9d..3d14b6dd8ea0 100644
+--- a/arch/arm64/mm/cache.S
++++ b/arch/arm64/mm/cache.S
+@@ -138,7 +138,7 @@ SYM_FUNC_END(__clean_dcache_area_pou)
+  *	- kaddr   - kernel address
+  *	- size    - size in question
+  */
+-SYM_FUNC_START_LOCAL(__dma_inv_area)
++SYM_FUNC_START(__dma_inv_area)
+ SYM_FUNC_START_PI(__inval_dcache_area)
+ 	/* FALLTHROUGH */
+ 
+@@ -177,7 +177,7 @@ SYM_FUNC_END(__dma_inv_area)
+  *	- kaddr   - kernel address
+  *	- size    - size in question
+  */
+-SYM_FUNC_START_LOCAL(__dma_clean_area)
++SYM_FUNC_START(__dma_clean_area)
+ SYM_FUNC_START_PI(__clean_dcache_area_poc)
+ 	/* FALLTHROUGH */
+ 
+diff --git a/arch/arm64/mm/flush.c b/arch/arm64/mm/flush.c
+index ac485163a4a7..6cd64d57c9cd 100644
+--- a/arch/arm64/mm/flush.c
++++ b/arch/arm64/mm/flush.c
+@@ -76,6 +76,8 @@ EXPORT_SYMBOL(flush_dcache_page);
+  * Additional functions defined in assembly.
+  */
+ EXPORT_SYMBOL(__flush_icache_range);
++EXPORT_SYMBOL(__dma_inv_area);
++EXPORT_SYMBOL(__dma_clean_area);
+ 
+ #ifdef CONFIG_ARCH_HAS_PMEM_API
+ void arch_wb_cache_pmem(void *addr, size_t size)
 -- 
-2.31.1
+2.30.2
 
