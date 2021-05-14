@@ -1,0 +1,235 @@
+From 956887961b1bb9a96ce1a456ee3578bc6acd53aa Mon Sep 17 00:00:00 2001
+From: Ansuel Smith <ansuelsmth@gmail.com>
+Date: Thu, 13 May 2021 23:27:49 +0200
+Subject: [PATCH 1/2] treewide: add support for kernel 5.10
+
+Signed-off-by: Ansuel Smith <ansuelsmth@gmail.com>
+---
+ nss_core.c                           | 3 ++-
+ nss_data_plane/nss_data_plane_gmac.c | 2 +-
+ nss_hal/fsm9010/nss_hal_pvt.c        | 2 +-
+ nss_hal/ipq50xx/nss_hal_pvt.c        | 6 +++---
+ nss_hal/ipq60xx/nss_hal_pvt.c        | 8 ++++----
+ nss_hal/ipq806x/nss_hal_pvt.c        | 4 ++--
+ nss_hal/ipq807x/nss_hal_pvt.c        | 6 +++---
+ nss_hal/nss_hal.c                    | 4 ++--
+ nss_meminfo.c                        | 2 +-
+ nss_n2h.c                            | 1 +
+ nss_ppe.c                            | 2 +-
+ 11 files changed, 21 insertions(+), 19 deletions(-)
+
+diff --git a/nss_core.c b/nss_core.c
+index c453cbb..061439b 100644
+--- a/nss_core.c
++++ b/nss_core.c
+@@ -52,7 +52,8 @@
+ (((LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0)) && (LINUX_VERSION_CODE < KERNEL_VERSION(3, 11, 0)))) || \
+ (((LINUX_VERSION_CODE >= KERNEL_VERSION(3, 18, 0)) && (LINUX_VERSION_CODE < KERNEL_VERSION(3, 19, 0)))) || \
+ (((LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0)) && (LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)))) || \
+-(((LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)) && (LINUX_VERSION_CODE < KERNEL_VERSION(5, 5, 0))))))
++(((LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)) && (LINUX_VERSION_CODE < KERNEL_VERSION(5, 5, 0)))) || \
++(((LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)) && (LINUX_VERSION_CODE < KERNEL_VERSION(5, 11, 0))))))
+ #error "Check skb recycle code in this file to match Linux version"
+ #endif
+ 
+diff --git a/nss_data_plane/nss_data_plane_gmac.c b/nss_data_plane/nss_data_plane_gmac.c
+index 42e10a9..df0c20d 100644
+--- a/nss_data_plane/nss_data_plane_gmac.c
++++ b/nss_data_plane/nss_data_plane_gmac.c
+@@ -20,7 +20,7 @@
+ #include "nss_tx_rx_common.h"
+ #include <nss_gmac_api_if.h>
+ 
+-#define NSS_DP_GMAC_SUPPORTED_FEATURES (NETIF_F_HIGHDMA | NETIF_F_HW_CSUM | NETIF_F_RXCSUM | NETIF_F_SG | NETIF_F_FRAGLIST | (NETIF_F_TSO | NETIF_F_TSO6 | NETIF_F_UFO))
++#define NSS_DP_GMAC_SUPPORTED_FEATURES (NETIF_F_HIGHDMA | NETIF_F_HW_CSUM | NETIF_F_RXCSUM | NETIF_F_SG | NETIF_F_FRAGLIST | (NETIF_F_TSO | NETIF_F_TSO6))
+ #define NSS_DATA_PLANE_GMAC_MAX_INTERFACES 4
+ 
+ static DEFINE_SPINLOCK(nss_data_plane_gmac_stats_lock);
+diff --git a/nss_hal/fsm9010/nss_hal_pvt.c b/nss_hal/fsm9010/nss_hal_pvt.c
+index 4a72d3d..e48911f 100644
+--- a/nss_hal/fsm9010/nss_hal_pvt.c
++++ b/nss_hal/fsm9010/nss_hal_pvt.c
+@@ -145,7 +145,7 @@ static struct nss_platform_data *__nss_hal_of_get_pdata(struct platform_device *
+ 	npd->nphys = res_nphys.start;
+ 	npd->vphys = res_vphys.start;
+ 
+-	npd->nmap = ioremap_nocache(npd->nphys, resource_size(&res_nphys));
++	npd->nmap = ioremap_cache(npd->nphys, resource_size(&res_nphys));
+ 	if (!npd->nmap) {
+ 		nss_info_always("%px: nss%d: ioremap() fail for nphys\n", nss_ctx, nss_ctx->id);
+ 		goto out;
+diff --git a/nss_hal/ipq50xx/nss_hal_pvt.c b/nss_hal/ipq50xx/nss_hal_pvt.c
+index 3d6dfd0..37e2d39 100644
+--- a/nss_hal/ipq50xx/nss_hal_pvt.c
++++ b/nss_hal/ipq50xx/nss_hal_pvt.c
+@@ -184,13 +184,13 @@ static struct nss_platform_data *__nss_hal_of_get_pdata(struct platform_device *
+ 	npd->nphys = res_nphys.start;
+ 	npd->qgic_phys = res_qgic_phys.start;
+ 
+-	npd->nmap = ioremap_nocache(npd->nphys, resource_size(&res_nphys));
++	npd->nmap = ioremap_cache(npd->nphys, resource_size(&res_nphys));
+ 	if (!npd->nmap) {
+ 		nss_info_always("%px: nss%d: ioremap() fail for nphys\n", nss_ctx, nss_ctx->id);
+ 		goto out;
+ 	}
+ 
+-	npd->qgic_map = ioremap_nocache(npd->qgic_phys, resource_size(&res_qgic_phys));
++	npd->qgic_map = ioremap_cache(npd->qgic_phys, resource_size(&res_qgic_phys));
+ 	if (!npd->qgic_map) {
+ 		nss_info_always("%px: nss%d: ioremap() fail for qgic map\n", nss_ctx, nss_ctx->id);
+ 		goto out;
+@@ -348,7 +348,7 @@ static int __nss_hal_common_reset(struct platform_device *nss_dev)
+ 
+ 	of_node_put(cmn);
+ 
+-	nss_misc_reset = ioremap_nocache(res_nss_misc_reset.start, resource_size(&res_nss_misc_reset));
++	nss_misc_reset = ioremap_cache(res_nss_misc_reset.start, resource_size(&res_nss_misc_reset));
+ 	if (!nss_misc_reset) {
+ 		pr_err("%px: ioremap fail for nss_misc_reset\n", nss_dev);
+ 		return -EFAULT;
+diff --git a/nss_hal/ipq60xx/nss_hal_pvt.c b/nss_hal/ipq60xx/nss_hal_pvt.c
+index 4c84cb9..b1770b8 100644
+--- a/nss_hal/ipq60xx/nss_hal_pvt.c
++++ b/nss_hal/ipq60xx/nss_hal_pvt.c
+@@ -207,13 +207,13 @@ static struct nss_platform_data *__nss_hal_of_get_pdata(struct platform_device *
+ 	npd->nphys = res_nphys.start;
+ 	npd->qgic_phys = res_qgic_phys.start;
+ 
+-	npd->nmap = ioremap_nocache(npd->nphys, resource_size(&res_nphys));
++	npd->nmap = ioremap_cache(npd->nphys, resource_size(&res_nphys));
+ 	if (!npd->nmap) {
+ 		nss_info_always("%px: nss%d: ioremap() fail for nphys\n", nss_ctx, nss_ctx->id);
+ 		goto out;
+ 	}
+ 
+-	npd->qgic_map = ioremap_nocache(npd->qgic_phys, resource_size(&res_qgic_phys));
++	npd->qgic_map = ioremap_cache(npd->qgic_phys, resource_size(&res_qgic_phys));
+ 	if (!npd->qgic_map) {
+ 		nss_info_always("%px: nss%d: ioremap() fail for qgic map\n", nss_ctx, nss_ctx->id);
+ 		goto out;
+@@ -433,13 +433,13 @@ static int __nss_hal_common_reset(struct platform_device *nss_dev)
+ 
+ 	of_node_put(cmn);
+ 
+-	nss_misc_reset = ioremap_nocache(res_nss_misc_reset.start, resource_size(&res_nss_misc_reset));
++	nss_misc_reset = ioremap_cache(res_nss_misc_reset.start, resource_size(&res_nss_misc_reset));
+ 	if (!nss_misc_reset) {
+ 		pr_err("%px: ioremap fail for nss_misc_reset\n", nss_dev);
+ 		return -EFAULT;
+ 	}
+ 
+-	nss_misc_reset_flag = ioremap_nocache(res_nss_misc_reset_flag.start, resource_size(&res_nss_misc_reset_flag));
++	nss_misc_reset_flag = ioremap_cache(res_nss_misc_reset_flag.start, resource_size(&res_nss_misc_reset_flag));
+ 	if (!nss_misc_reset_flag) {
+ 		pr_err("%px: ioremap fail for nss_misc_reset_flag\n", nss_dev);
+ 		return -EFAULT;
+diff --git a/nss_hal/ipq806x/nss_hal_pvt.c b/nss_hal/ipq806x/nss_hal_pvt.c
+index b8733e0..56944cd 100644
+--- a/nss_hal/ipq806x/nss_hal_pvt.c
++++ b/nss_hal/ipq806x/nss_hal_pvt.c
+@@ -458,7 +458,7 @@ static struct nss_platform_data *__nss_hal_of_get_pdata(struct platform_device *
+ 	npd->nphys = res_nphys.start;
+ 	npd->vphys = res_vphys.start;
+ 
+-	npd->nmap = ioremap_nocache(npd->nphys, resource_size(&res_nphys));
++	npd->nmap = ioremap_cache(npd->nphys, resource_size(&res_nphys));
+ 	if (!npd->nmap) {
+ 		nss_info_always("%px: nss%d: ioremap() fail for nphys\n", nss_ctx, nss_ctx->id);
+ 		goto out;
+@@ -711,7 +711,7 @@ static int __nss_hal_common_reset(struct platform_device *nss_dev)
+ 	}
+ 	of_node_put(cmn);
+ 
+-	fpb_base = ioremap_nocache(res_nss_fpb_base.start, resource_size(&res_nss_fpb_base));
++	fpb_base = ioremap_cache(res_nss_fpb_base.start, resource_size(&res_nss_fpb_base));
+ 	if (!fpb_base) {
+ 		pr_err("%px: ioremap fail for nss_fpb_base\n", nss_dev);
+ 		return -EFAULT;
+diff --git a/nss_hal/ipq807x/nss_hal_pvt.c b/nss_hal/ipq807x/nss_hal_pvt.c
+index b95a23c..e317e01 100644
+--- a/nss_hal/ipq807x/nss_hal_pvt.c
++++ b/nss_hal/ipq807x/nss_hal_pvt.c
+@@ -234,7 +234,7 @@ static struct nss_platform_data *__nss_hal_of_get_pdata(struct platform_device *
+ 	npd->vphys = res_vphys.start;
+ 	npd->qgic_phys = res_qgic_phys.start;
+ 
+-	npd->nmap = ioremap_nocache(npd->nphys, resource_size(&res_nphys));
++	npd->nmap = ioremap_cache(npd->nphys, resource_size(&res_nphys));
+ 	if (!npd->nmap) {
+ 		nss_info_always("%px: nss%d: ioremap() fail for nphys\n", nss_ctx, nss_ctx->id);
+ 		goto out;
+@@ -247,7 +247,7 @@ static struct nss_platform_data *__nss_hal_of_get_pdata(struct platform_device *
+ 		goto out;
+ 	}
+ 
+-	npd->qgic_map = ioremap_nocache(npd->qgic_phys, resource_size(&res_qgic_phys));
++	npd->qgic_map = ioremap_cache(npd->qgic_phys, resource_size(&res_qgic_phys));
+ 	if (!npd->qgic_map) {
+ 		nss_info_always("%px: nss%d: ioremap() fail for qgic map\n", nss_ctx, nss_ctx->id);
+ 		goto out;
+@@ -467,7 +467,7 @@ static int __nss_hal_common_reset(struct platform_device *nss_dev)
+ 	}
+ 	of_node_put(cmn);
+ 
+-	nss_misc_reset = ioremap_nocache(res_nss_misc_reset.start, resource_size(&res_nss_misc_reset));
++	nss_misc_reset = ioremap_cache(res_nss_misc_reset.start, resource_size(&res_nss_misc_reset));
+ 	if (!nss_misc_reset) {
+ 		pr_err("%px: ioremap fail for nss_misc_reset\n", nss_dev);
+ 		return -EFAULT;
+diff --git a/nss_hal/nss_hal.c b/nss_hal/nss_hal.c
+index d58bb57..e620751 100644
+--- a/nss_hal/nss_hal.c
++++ b/nss_hal/nss_hal.c
+@@ -78,9 +78,9 @@ int nss_hal_firmware_load(struct nss_ctx_instance *nss_ctx, struct platform_devi
+ 		return rc;
+ 	}
+ 
+-	load_mem = ioremap_nocache(npd->load_addr, nss_fw->size);
++	load_mem = ioremap_cache(npd->load_addr, nss_fw->size);
+ 	if (!load_mem) {
+-		nss_info_always("%px: ioremap_nocache failed: %x", nss_ctx, npd->load_addr);
++		nss_info_always("%px: ioremap_cache failed: %x", nss_ctx, npd->load_addr);
+ 		release_firmware(nss_fw);
+ 		return rc;
+ 	}
+diff --git a/nss_meminfo.c b/nss_meminfo.c
+index e24e6be..fa959b9 100644
+--- a/nss_meminfo.c
++++ b/nss_meminfo.c
+@@ -728,7 +728,7 @@ bool nss_meminfo_init(struct nss_ctx_instance *nss_ctx)
+ 	/*
+ 	 * meminfo_start is the label where the start address of meminfo map is stored.
+ 	 */
+-	meminfo_start = (uint32_t *)ioremap_nocache(nss_ctx->load + NSS_MEMINFO_MAP_START_OFFSET,
++	meminfo_start = (uint32_t *)ioremap_cache(nss_ctx->load + NSS_MEMINFO_MAP_START_OFFSET,
+ 							NSS_MEMINFO_RESERVE_AREA_SIZE);
+ 	if (!meminfo_start) {
+ 		nss_info_always("%px: cannot remap meminfo start\n", nss_ctx);
+diff --git a/nss_n2h.c b/nss_n2h.c
+index ea5c2d0..e1d9983 100644
+--- a/nss_n2h.c
++++ b/nss_n2h.c
+@@ -18,6 +18,7 @@
+  * nss_n2h.c
+  *	NSS N2H node APIs
+  */
++#include <linux/kmemleak.h>
+ 
+ #include "nss_tx_rx_common.h"
+ #include "nss_n2h_stats.h"
+diff --git a/nss_ppe.c b/nss_ppe.c
+index 46ce217..67d5729 100644
+--- a/nss_ppe.c
++++ b/nss_ppe.c
+@@ -357,7 +357,7 @@ void nss_ppe_init(void)
+ 	/*
+ 	 * Get the PPE base address
+ 	 */
+-	ppe_pvt.ppe_base = ioremap_nocache(PPE_BASE_ADDR, PPE_REG_SIZE);
++	ppe_pvt.ppe_base = ioremap_cache(PPE_BASE_ADDR, PPE_REG_SIZE);
+ 	if (!ppe_pvt.ppe_base) {
+ 		nss_warning("DRV can't get PPE base address\n");
+ 		return;
+-- 
+2.30.2
+

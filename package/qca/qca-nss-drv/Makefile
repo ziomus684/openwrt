@@ -18,7 +18,8 @@ define KernelPackage/qca-nss-drv
   SECTION:=kernel
   CATEGORY:=Kernel modules
   SUBMENU:=Network Devices
-  DEPENDS:=@(TARGET_ipq807x||TARGET_ipq_ipq60xx) +kmod-qca-nss-dp
+  DEPENDS:=@TARGET_ipq806x||TARGET_ipq_ipq806x||TARGET_ipq_ipq807x||TARGET_ipq_ipq807x_64||TARGET_ipq807x||TARGET_ipq807x_64||TARGET_ipq_ipq60xx||TARGET_ipq_ipq60xx_64||TARGET_ipq_ipq50xx||TARGET_ipq_ipq50xx_64 \
+		+PACKAGE_kmod-qca-nss-gmac:kmod-qca-nss-gmac +PACKAGE_kmod-qca-nss-dp:kmod-qca-nss-dp +PACKAGE_kmod-qca-nss-dp:kmod-qca-ssdk @!LINUX_3_18
   TITLE:=Kernel driver for NSS (core driver)
   FILES:=$(PKG_BUILD_DIR)/qca-nss-drv.ko
   AUTOLOAD:=$(call AutoLoad,32,qca-nss-drv)
@@ -36,7 +37,6 @@ define KernelPackage/qca-nss-drv/install
 	$(INSTALL_BIN) ./files/qca-nss-drv.sysctl $(1)/etc/sysctl.d/qca-nss-drv.conf
 	$(INSTALL_BIN) ./files/qca-nss-drv.hotplug $(1)/etc/hotplug.d/firmware/10-qca-nss-fw
 	$(INSTALL_BIN) ./files/qca-nss-drv.conf $(1)/etc/config/nss
-
 endef
 
 define KernelPackage/qca-nss-drv/Description
@@ -46,7 +46,7 @@ endef
 define Build/InstallDev
 	mkdir -p $(1)/usr/include/qca-nss-drv
 	$(CP) $(PKG_BUILD_DIR)/exports/* $(1)/usr/include/qca-nss-drv/
-ifneq (, $(findstring $(CONFIG_TARGET_BOARD), "ipq807x" "ipq60xx"))
+ifneq (, $(findstring $(CONFIG_TARGET_BOARD), "ipq807x" "ipq807x_64" "ipq60xx" "ipq60xx_64" "ipq50xx" "ipq50xx_64"))
 	$(RM) $(1)/usr/include/qca-nss-drv/nss_ipsecmgr.h
 	$(INSTALL_DIR) $(1)/usr/include/qca-nss-clients
 	$(CP) $(NSS_CLIENTS_DIR)/exports/nss_ipsecmgr.h $(1)/usr/include/qca-nss-clients/.
@@ -55,9 +55,12 @@ endef
 
 EXTRA_CFLAGS+= -I$(STAGING_DIR)/usr/include/qca-nss-gmac -I$(STAGING_DIR)/usr/include/qca-nss-dp -I$(STAGING_DIR)/usr/include/qca-ssdk
 
-ifneq (, $(findstring $(CONFIG_TARGET_BOARD), "ipq807x" "ipq60xx"))
+ifeq ($(CONFIG_KERNEL_IPQ_MEM_PROFILE),256)
 EXTRA_CFLAGS+= -DNSS_MEM_PROFILE_LOW
-LOW_MEM_PROFILE_MAKE_OPTS=y
+endif
+
+ifeq ($(CONFIG_KERNEL_IPQ_MEM_PROFILE),512)
+EXTRA_CFLAGS+= -DNSS_MEM_PROFILE_MEDIUM
 endif
 
 ifeq ($(CONFIG_KERNEL_SKB_FIXED_SIZE_2K),y)
@@ -65,7 +68,7 @@ EXTRA_CFLAGS+= -DNSS_SKB_FIXED_SIZE_2K
 endif
 
 DRV_MAKE_OPTS:=
-ifeq ($(LOW_MEM_PROFILE_MAKE_OPTS),y)
+ifeq ($(CONFIG_KERNEL_IPQ_MEM_PROFILE),256)
 DRV_MAKE_OPTS+=NSS_DRV_C2C_ENABLE=n \
         NSS_DRV_CAPWAP_ENABLE=n \
         NSS_DRV_CLMAP_ENABLE=n \
@@ -102,6 +105,8 @@ ifeq ($(CONFIG_TARGET_BOARD), "ipq807x")
     SOC="ipq807x_64"
 else ifeq ($(CONFIG_TARGET_BOARD), "ipq60xx")
     SOC="ipq60xx_64"
+else
+    SOC=$(CONFIG_TARGET_BOARD)
 endif
 
 define Build/Configure
@@ -114,7 +119,7 @@ define Build/Compile
 		ARCH="$(LINUX_KARCH)" \
 		M="$(PKG_BUILD_DIR)" \
 		EXTRA_CFLAGS="$(EXTRA_CFLAGS)" SoC=$(SOC) \
-    $(KERNEL_MAKE_FLAGS)
+		$(KERNEL_MAKE_FLAGS) \
 		modules
 endef
 

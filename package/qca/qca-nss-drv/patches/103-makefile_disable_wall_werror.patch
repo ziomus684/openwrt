@@ -1,0 +1,28 @@
+From 81d7d3630161c4378579a6d1ffc603e299cca4dc Mon Sep 17 00:00:00 2001
+From: Ansuel Smith <ansuelsmth@gmail.com>
+Date: Fri, 14 May 2021 01:26:08 +0200
+Subject: [PATCH 2/2] makefile: disable wall werror
+
+gcc complain for unsude variables with nss trace.
+
+Signed-off-by: Ansuel Smith <ansuelsmth@gmail.com>
+---
+ Makefile | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/Makefile b/Makefile
+index 7ac4a72..4754066 100644
+--- a/Makefile
++++ b/Makefile
+@@ -469,7 +469,7 @@ endif
+ ccflags-y += -I$(obj)/nss_hal/include -I$(obj)/nss_data_plane/include -I$(obj)/exports -DNSS_DEBUG_LEVEL=0 -DNSS_PKT_STATS_ENABLED=1
+ ccflags-y += -I$(obj)/nss_data_plane/hal/include
+ ccflags-y += -DNSS_PM_DEBUG_LEVEL=0 -DNSS_SKB_REUSE_SUPPORT=1
+-ccflags-y += -Wall -Werror
++# ccflags-y += -Wall -Werror
+ 
+ KERNELVERSION := $(word 1, $(subst ., ,$(KERNELVERSION))).$(word 2, $(subst ., ,$(KERNELVERSION)))
+ 
+-- 
+2.30.2
+
