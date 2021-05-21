@@ -12,7 +12,8 @@ PKG_CONFIG_DEPENDS += \
 	CONFIG_ATH9K_TX99 \
 	CONFIG_ATH10K_LEDS \
 	CONFIG_ATH10K_THERMAL \
-	CONFIG_ATH_USER_REGD
+	CONFIG_ATH_USER_REGD \
+  CONFIG_ATH11K_NSS_SUPPORT
 
 ifdef CONFIG_PACKAGE_MAC80211_DEBUGFS
   config-y += \
@@ -60,6 +61,7 @@ config-$(call config_package,ath10k) += ATH10K ATH10K_PCI
 config-$(call config_package,ath11k) += ATH11K
 config-$(call config_package,ath11k-ahb) += ATH11K_AHB
 config-$(call config_package,ath11k-pci) += ATH11K_PCI
+config-$(CONFIG_ATH11K_NSS_SUPPORT) += ATH11K_NSS_SUPPORT
 
 config-$(call config_package,ath5k) += ATH5K
 ifdef CONFIG_TARGET_ath25
@@ -291,21 +293,23 @@ define KernelPackage/ath11k
   TITLE:=Qualcomm 802.11ax wireless chipset support (common code)
   URL:=https://wireless.wiki.kernel.org/en/users/drivers/ath11k
   DEPENDS+= +kmod-ath +@DRIVER_11N_SUPPORT +@DRIVER_11AC_SUPPORT +@DRIVER_11AX_SUPPORT \
-  +kmod-crypto-michael-mic +ATH11K_THERMAL:kmod-hwmon-core +ATH11K_THERMAL:kmod-thermal
+  +kmod-crypto-michael-mic +ATH11K_THERMAL:kmod-hwmon-core +ATH11K_THERMAL:kmod-thermal \
+  +ATH11K_NSS_SUPPORT:kmod-qca-nss-drv
   FILES:=$(PKG_BUILD_DIR)/drivers/net/wireless/ath/ath11k/ath11k.ko
   AUTOLOAD:=$(call AutoProbe,ath11k)
 endef
 
-define KernelPackage/ath11k/description
-This module adds support for Qualcomm Technologies 802.11ax family of
-chipsets.
-endef
-
 define KernelPackage/ath11k/config
 
+       config ATH11K_NSS_SUPPORT
+               bool "Enable NSS support"
+               default y
+               depends on PACKAGE_kmod-ath11k && PACKAGE_kmod-qca-nss-drv
+
        config ATH11K_THERMAL
-               bool "Enable thermal sensors and throttling support"
-               depends on PACKAGE_kmod-ath11k
+              bool "Enable thermal sensors and throttling support"
+              default y
+              depends on PACKAGE_kmod-ath11k
 
 endef
 
