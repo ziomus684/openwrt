@@ -1,0 +1,261 @@
+--- a/include/net/netfilter/nf_conntrack_extend.h
++++ b/include/net/netfilter/nf_conntrack_extend.h
+@@ -31,6 +31,10 @@ enum nf_ct_ext_id {
+ #if IS_ENABLED(CONFIG_NF_CONNTRACK_RTCACHE)
+ 	NF_CT_EXT_RTCACHE,
+ #endif
++#ifdef CONFIG_NF_CONNTRACK_DSCPREMARK_EXT
++	NF_CT_EXT_DSCPREMARK,	/* QCA NSS ECM support */
++#endif
++
+ 	NF_CT_EXT_NUM,
+ };
+ 
+@@ -44,6 +48,9 @@ enum nf_ct_ext_id {
+ #define NF_CT_EXT_TIMEOUT_TYPE struct nf_conn_timeout
+ #define NF_CT_EXT_LABELS_TYPE struct nf_conn_labels
+ #define NF_CT_EXT_SYNPROXY_TYPE struct nf_conn_synproxy
++/* QCA NSS ECM support - Start */
++#define NF_CT_EXT_DSCPREMARK_TYPE struct nf_ct_dscpremark_ext
++/* QCA NSS ECM support - End */
+ 
+ /* Extensions: optional stuff which isn't permanently in struct. */
+ struct nf_ct_ext {
+diff --git a/include/net/netfilter/nf_conntrack_dscpremark_ext.h b/include/net/netfilter/nf_conntrack_dscpremark_ext.h
+new file mode 100644
+index 0000000000..426ac5370d
+--- /dev/null
++++ b/include/net/netfilter/nf_conntrack_dscpremark_ext.h
+@@ -0,0 +1,108 @@
++/*
++ **************************************************************************
++ * Copyright (c) 2014-2015, 2019, The Linux Foundation. All rights reserved.
++ * Permission to use, copy, modify, and/or distribute this software for
++ * any purpose with or without fee is hereby granted, provided that the
++ * above copyright notice and this permission notice appear in all copies.
++ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
++ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
++ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
++ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
++ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
++ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT
++ * OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
++ **************************************************************************
++ */
++
++/* DSCP remark conntrack extension APIs. */
++
++#ifndef _NF_CONNTRACK_DSCPREMARK_H
++#define _NF_CONNTRACK_DSCPREMARK_H
++#include <net/netfilter/nf_conntrack.h>
++#include <net/netfilter/nf_conntrack_extend.h>
++
++/* Rule flags */
++#define NF_CT_DSCPREMARK_EXT_DSCP_RULE_VALID 0x1
++
++/* Rule validity */
++#define NF_CT_DSCPREMARK_EXT_RULE_VALID 0x1
++#define NF_CT_DSCPREMARK_EXT_RULE_NOT_VALID 0x0
++
++/* Which QoS features are set flags */
++#define NF_CT_DSCPREMARK_EXT_PRIO 0x1
++#define NF_CT_DSCPREMARK_EXT_DSCP 0x2
++#define NF_CT_DSCPREMARK_EXT_IGS_QOS 0x4
++
++/*
++ * DSCP remark conntrack extension structure.
++ */
++struct nf_ct_dscpremark_ext {
++	__u32 flow_priority;	/* Original direction packet priority */
++	__u32 reply_priority;	/* Reply direction packet priority */
++	__u16 igs_flow_qos_tag;	/* Original direction ingress packet priority */
++	__u16 igs_reply_qos_tag;	/* Reply direction ingress packet priority */
++	__u8 flow_dscp;		/* IP DSCP value for original direction */
++	__u8 reply_dscp;	/* IP DSCP value for reply direction */
++	__u16 rule_flags;	/* Rule Validity flags */
++	__u16 flow_set_flags;	/* Original direction set flags */
++	__u16 return_set_flags;	/* Reply direction set flags */
++};
++
++/*
++ * nf_ct_dscpremark_ext_find()
++ *	Finds the extension data of the conntrack entry if it exists.
++ */
++static inline struct nf_ct_dscpremark_ext *
++nf_ct_dscpremark_ext_find(const struct nf_conn *ct)
++{
++#ifdef CONFIG_NF_CONNTRACK_DSCPREMARK_EXT
++	return nf_ct_ext_find(ct, NF_CT_EXT_DSCPREMARK);
++#else
++	return NULL;
++#endif
++}
++
++/*
++ * nf_ct_dscpremark_ext_add()
++ *	Adds the extension data to the conntrack entry.
++ */
++static inline
++struct nf_ct_dscpremark_ext *nf_ct_dscpremark_ext_add(struct nf_conn *ct,
++						      gfp_t gfp)
++{
++#ifdef CONFIG_NF_CONNTRACK_DSCPREMARK_EXT
++	struct nf_ct_dscpremark_ext *ncde;
++
++	ncde = nf_ct_ext_add(ct, NF_CT_EXT_DSCPREMARK, gfp);
++	if (!ncde)
++		return NULL;
++
++	return ncde;
++#else
++	return NULL;
++#endif
++};
++
++#ifdef CONFIG_NF_CONNTRACK_DSCPREMARK_EXT
++extern int nf_conntrack_dscpremark_ext_init(void);
++extern void nf_conntrack_dscpremark_ext_fini(void);
++extern int nf_conntrack_dscpremark_ext_set_dscp_rule_valid(struct nf_conn *ct);
++extern int
++nf_conntrack_dscpremark_ext_get_dscp_rule_validity(struct nf_conn *ct);
++#else
++/*
++ * nf_conntrack_dscpremark_ext_init()
++ */
++static inline int nf_conntrack_dscpremark_ext_init(void)
++{
++	return 0;
++}
++
++/*
++ * nf_conntrack_dscpremark_ext_fini()
++ */
++static inline void nf_conntrack_dscpremark_ext_fini(void)
++{
++}
++#endif /* CONFIG_NF_CONNTRACK_DSCPREMARK_EXT */
++#endif /* _NF_CONNTRACK_DSCPREMARK_H */
+\ No newline at end of file
+diff --git a/net/netfilter/nf_conntrack_dscpremark_ext.c b/net/netfilter/nf_conntrack_dscpremark_ext.c
+new file mode 100644
+index 0000000000..e3cb96e3fa
+--- /dev/null
++++ b/net/netfilter/nf_conntrack_dscpremark_ext.c
+@@ -0,0 +1,92 @@
++/*
++ **************************************************************************
++ * Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
++ * Permission to use, copy, modify, and/or distribute this software for
++ * any purpose with or without fee is hereby granted, provided that the
++ * above copyright notice and this permission notice appear in all copies.
++ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
++ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
++ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
++ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
++ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
++ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT
++ * OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
++ **************************************************************************
++ */
++
++/* DSCP remark handling conntrack extension registration. */
++
++#include <linux/netfilter.h>
++#include <linux/slab.h>
++#include <linux/kernel.h>
++#include <linux/moduleparam.h>
++#include <linux/export.h>
++
++#include <net/netfilter/nf_conntrack.h>
++#include <net/netfilter/nf_conntrack_extend.h>
++#include <net/netfilter/nf_conntrack_dscpremark_ext.h>
++
++/* DSCP remark conntrack extension type declaration */
++static struct nf_ct_ext_type dscpremark_extend __read_mostly = {
++	.len = sizeof(struct nf_ct_dscpremark_ext),
++	.align = __alignof__(struct nf_ct_dscpremark_ext),
++	.id = NF_CT_EXT_DSCPREMARK,
++};
++
++/* nf_conntrack_dscpremark_ext_init()
++ *	Initializes the DSCP remark conntrack extension.
++ */
++int nf_conntrack_dscpremark_ext_init(void)
++{
++	int ret;
++
++	ret = nf_ct_extend_register(&dscpremark_extend);
++	if (ret < 0) {
++		pr_warn("nf_conntrack_dscpremark: Unable to register extension\n");
++		return ret;
++	}
++
++	return 0;
++}
++
++/* nf_conntrack_dscpremark_ext_set_dscp_rule_valid()
++ *	Set DSCP rule validity flag in the extension
++ */
++int nf_conntrack_dscpremark_ext_set_dscp_rule_valid(struct nf_conn *ct)
++{
++	struct nf_ct_dscpremark_ext *ncde;
++
++	ncde = nf_ct_dscpremark_ext_find(ct);
++	if (!ncde)
++		return -1;
++
++	ncde->rule_flags = NF_CT_DSCPREMARK_EXT_DSCP_RULE_VALID;
++	return 0;
++}
++EXPORT_SYMBOL(nf_conntrack_dscpremark_ext_set_dscp_rule_valid);
++
++/* nf_conntrack_dscpremark_ext_get_dscp_rule_validity()
++ *	Check if the DSCP rule flag is valid from the extension
++ */
++int nf_conntrack_dscpremark_ext_get_dscp_rule_validity(struct nf_conn *ct)
++{
++	struct nf_ct_dscpremark_ext *ncde;
++
++	ncde = nf_ct_dscpremark_ext_find(ct);
++	if (!ncde)
++		return NF_CT_DSCPREMARK_EXT_RULE_NOT_VALID;
++
++	if (ncde->rule_flags & NF_CT_DSCPREMARK_EXT_DSCP_RULE_VALID)
++		return NF_CT_DSCPREMARK_EXT_RULE_VALID;
++
++	return NF_CT_DSCPREMARK_EXT_RULE_NOT_VALID;
++}
++EXPORT_SYMBOL(nf_conntrack_dscpremark_ext_get_dscp_rule_validity);
++
++/* nf_conntrack_dscpremark_ext_fini()
++ *	De-initializes the DSCP remark conntrack extension.
++ */
++void nf_conntrack_dscpremark_ext_fini(void)
++{
++	nf_ct_extend_unregister(&dscpremark_extend);
++}
+--- a/net/netfilter/Kconfig
++++ b/net/netfilter/Kconfig
+@@ -158,6 +158,13 @@ config NF_CONNTRACK_TIMEOUT
+ 
+ 	  If unsure, say `N'.
+ 
++config NF_CONNTRACK_DSCPREMARK_EXT
++	bool  'Connection tracking extension for dscp remark target'
++	depends on NETFILTER_ADVANCED
++	help
++	  This option enables support for connection tracking extension
++	  for dscp remark.
++
+ config NF_CONNTRACK_CHAIN_EVENTS
+ 	bool "Register multiple callbacks to ct events"
+ 	depends on NF_CONNTRACK_EVENTS
+--- a/net/netfilter/Makefile
++++ b/net/netfilter/Makefile
+@@ -14,6 +14,7 @@ nf_conntrack-$(CONFIG_NF_CONNTRACK_LABEL
+ nf_conntrack-$(CONFIG_NF_CT_PROTO_DCCP) += nf_conntrack_proto_dccp.o
+ nf_conntrack-$(CONFIG_NF_CT_PROTO_SCTP) += nf_conntrack_proto_sctp.o
+ nf_conntrack-$(CONFIG_NF_CT_PROTO_GRE) += nf_conntrack_proto_gre.o
++nf_conntrack-$(CONFIG_NF_CONNTRACK_DSCPREMARK_EXT) += nf_conntrack_dscpremark_ext.o
+ 
+ obj-$(CONFIG_NETFILTER) = netfilter.o
