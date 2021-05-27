@@ -1,0 +1,174 @@
+From 76c97f0042daa70160ac5304f3399205a0e45cb5 Mon Sep 17 00:00:00 2001
+From: Ansuel Smith <ansuelsmth@gmail.com>
+Date: Thu, 27 May 2021 03:52:47 +0200
+Subject: [PATCH] treewide: hack support for mismatched firmware
+
+Make new qsdk feature configurable to support old half compatible
+firmware.
+
+Signed-off-by: Ansuel Smith <ansuelsmth@gmail.com>
+---
+ exports/nss_fw_version.h | 11 +++++++++++
+ exports/nss_ipv4.h       |  8 ++++++++
+ exports/nss_ipv6.h       |  7 +++++++
+ nss_ipv4_stats.c         |  2 ++
+ nss_ipv6_stats.c         |  2 ++
+ 5 files changed, 30 insertions(+)
+ create mode 100644 exports/nss_fw_version.h
+
+diff --git a/exports/nss_fw_version.h b/exports/nss_fw_version.h
+new file mode 100644
+index 0000000..895d523
+--- /dev/null
++++ b/exports/nss_fw_version.h
+@@ -0,0 +1,11 @@
++#ifndef __NSS_FW_VERSION_H
++#define __NSS_FW_VERSION_H
++
++#define NSS_FW_VERSION_MAJOR 11
++#define NSS_FW_VERSION_MINOR 4
++
++#define NSS_FW_VERSION(a,b) (((a) << 8) + (b))
++
++#define NSS_FW_VERSION_CODE NSS_FW_VERSION(NSS_FW_VERSION_MAJOR, NSS_FW_VERSION_MINOR)
++
++#endif /* __NSS_FW_VERSION_H */
+\ No newline at end of file
+diff --git a/exports/nss_ipv4.h b/exports/nss_ipv4.h
+index ee3a552..25c4d82 100644
+--- a/exports/nss_ipv4.h
++++ b/exports/nss_ipv4.h
+@@ -26,6 +26,8 @@
+ #include "nss_stats_public.h"
+ #endif
+ 
++#include "nss_fw_version.h"
++
+ /**
+  * @addtogroup nss_ipv4_subsystem
+  * @{
+@@ -216,12 +218,14 @@ enum nss_ipv4_stats_types {
+ 		/**< Number of IPv4 multicast connection destroy requests that missed the cache. */
+ 	NSS_IPV4_STATS_MC_CONNECTION_FLUSHES,
+ 		/**< Number of IPv4 multicast connection flushes. */
++#if (NSS_FW_VERSION_CODE > NSS_FW_VERSION(11,3))
+ 	NSS_IPV4_STATS_CONNECTION_CREATE_INVALID_MIRROR_IFNUM,
+ 		/**< Number of IPv4 mirror connection requests with an invalid interface number. */
+ 	NSS_IPV4_STATS_CONNECTION_CREATE_INVALID_MIRROR_IFTYPE,
+ 		/**< Number of IPv4 mirror connection requests with an invalid interface type. */
+ 	NSS_IPV4_STATS_MIRROR_FAILURES,
+ 		/**< Number of IPv4 mirror failures. */
++#endif
+ 	NSS_IPV4_STATS_MAX,
+ 		/**< Maximum message type. */
+ };
+@@ -609,8 +613,10 @@ struct nss_ipv4_rule_create_msg {
+ 			/**< Ingress shaping related accleration parameters. */
+ 	struct nss_ipv4_identifier_rule identifier;
+ 			/**< Rule for adding identifier. */
++#if (NSS_FW_VERSION_CODE > NSS_FW_VERSION(11,3))
+ 	struct nss_ipv4_mirror_rule mirror_rule;
+ 			/**< Mirror rule parameter. */
++#endif
+ };
+ 
+ /**
+@@ -955,6 +961,7 @@ struct nss_ipv4_node_sync {
+ 	uint32_t ipv4_mc_connection_flushes;
+ 			/**< Number of multicast connection flushes. */
+ 
++#if (NSS_FW_VERSION_CODE > NSS_FW_VERSION(11,3))
+ 	uint32_t ipv4_connection_create_invalid_mirror_ifnum;
+ 			/**< Number of create request failed with an invalid mirror interface number. */
+ 
+@@ -963,6 +970,7 @@ struct nss_ipv4_node_sync {
+ 
+ 	uint32_t ipv4_mirror_failures;
+ 			/**< Mirror packet failed. */
++#endif
+ 
+ 	uint32_t exception_events[NSS_IPV4_EXCEPTION_EVENT_MAX];
+ 			/**< Number of exception events. */
+diff --git a/exports/nss_ipv6.h b/exports/nss_ipv6.h
+index 930e74c..a21f939 100644
+--- a/exports/nss_ipv6.h
++++ b/exports/nss_ipv6.h
+@@ -195,6 +195,8 @@ enum nss_ipv6_stats_types {
+ 					/**< Number of IPv6 multicast connection destroy requests that missed the cache. */
+ 	NSS_IPV6_STATS_MC_CONNECTION_FLUSHES,
+ 					/**< Number of IPv6 multicast connection flushes. */
++
++#if (NSS_FW_VERSION_CODE > NSS_FW_VERSION(11,3))
+ 	NSS_IPV6_STATS_CONNECTION_CREATE_INVALID_MIRROR_IFNUM,
+ 		/**< Number of IPv6 mirror connection requests with an invalid interface number. */
+ 	NSS_IPV6_STATS_CONNECTION_CREATE_INVALID_MIRROR_IFTYPE,
+@@ -202,6 +204,7 @@ enum nss_ipv6_stats_types {
+ 
+ 	NSS_IPV6_STATS_MIRROR_FAILURES,
+ 		/**< Number of IPv6 mirror failures. */
++#endif
+ 
+ 	NSS_IPV6_STATS_MAX,
+ 					/**< Maximum message type. */
+@@ -702,8 +705,10 @@ struct nss_ipv6_rule_create_msg {
+ 			/**< Ingress shaping related accleration parameters. */
+ 	struct nss_ipv6_identifier_rule identifier;
+ 			/**< Rule for adding identifier. */
++#if (NSS_FW_VERSION_CODE > NSS_FW_VERSION(11,3))
+ 	struct nss_ipv6_mirror_rule mirror_rule;
+ 			/**< Mirror rule parameter. */
++#endif
+ };
+ 
+ /**
+@@ -950,6 +955,7 @@ struct nss_ipv6_node_sync {
+ 	uint32_t ipv6_mc_connection_flushes;
+ 			/**< Number of multicast connection flushes. */
+ 
++#if (NSS_FW_VERSION_CODE > NSS_FW_VERSION(11,3))
+ 	uint32_t ipv6_connection_create_invalid_mirror_ifnum;
+ 			/**< Number of create request failed with an invalid mirror interface number. */
+ 
+@@ -958,6 +964,7 @@ struct nss_ipv6_node_sync {
+ 
+ 	uint32_t ipv6_mirror_failures;
+ 			/**< Mirror packet failed. */
++#endif
+ 
+ 	uint32_t exception_events[NSS_IPV6_EXCEPTION_EVENT_MAX];
+ 			/**< Number of exception events. */
+diff --git a/nss_ipv4_stats.c b/nss_ipv4_stats.c
+index 39b162c..c875a63 100644
+--- a/nss_ipv4_stats.c
++++ b/nss_ipv4_stats.c
+@@ -177,9 +177,11 @@ void nss_ipv4_stats_node_sync(struct nss_ctx_instance *nss_ctx, struct nss_ipv4_
+ 	nss_ipv4_stats[NSS_IPV4_STATS_MC_CONNECTION_DESTROY_REQUESTS] += nins->ipv4_mc_connection_destroy_requests;
+ 	nss_ipv4_stats[NSS_IPV4_STATS_MC_CONNECTION_DESTROY_MISSES] += nins->ipv4_mc_connection_destroy_misses;
+ 	nss_ipv4_stats[NSS_IPV4_STATS_MC_CONNECTION_FLUSHES] += nins->ipv4_mc_connection_flushes;
++#if (NSS_FW_VERSION_CODE > NSS_FW_VERSION(11,3))
+ 	nss_ipv4_stats[NSS_IPV4_STATS_CONNECTION_CREATE_INVALID_MIRROR_IFNUM] += nins->ipv4_connection_create_invalid_mirror_ifnum;
+ 	nss_ipv4_stats[NSS_IPV4_STATS_CONNECTION_CREATE_INVALID_MIRROR_IFTYPE] += nins->ipv4_connection_create_invalid_mirror_iftype;
+ 	nss_ipv4_stats[NSS_IPV4_STATS_MIRROR_FAILURES] += nins->ipv4_mirror_failures;
++#endif
+ 
+ 	for (i = 0; i < NSS_IPV4_EXCEPTION_EVENT_MAX; i++) {
+ 		nss_ipv4_exception_stats[i] += nins->exception_events[i];
+diff --git a/nss_ipv6_stats.c b/nss_ipv6_stats.c
+index 617f55b..a492a6c 100644
+--- a/nss_ipv6_stats.c
++++ b/nss_ipv6_stats.c
+@@ -180,9 +180,11 @@ void nss_ipv6_stats_node_sync(struct nss_ctx_instance *nss_ctx, struct nss_ipv6_
+ 	nss_ipv6_stats[NSS_IPV6_STATS_MC_CONNECTION_DESTROY_REQUESTS] += nins->ipv6_mc_connection_destroy_requests;
+ 	nss_ipv6_stats[NSS_IPV6_STATS_MC_CONNECTION_DESTROY_MISSES] += nins->ipv6_mc_connection_destroy_misses;
+ 	nss_ipv6_stats[NSS_IPV6_STATS_MC_CONNECTION_FLUSHES] += nins->ipv6_mc_connection_flushes;
++#if (NSS_FW_VERSION_CODE > NSS_FW_VERSION(11,3))
+ 	nss_ipv6_stats[NSS_IPV6_STATS_CONNECTION_CREATE_INVALID_MIRROR_IFNUM] += nins->ipv6_connection_create_invalid_mirror_ifnum;
+ 	nss_ipv6_stats[NSS_IPV6_STATS_CONNECTION_CREATE_INVALID_MIRROR_IFTYPE] += nins->ipv6_connection_create_invalid_mirror_iftype;
+ 	nss_ipv6_stats[NSS_IPV6_STATS_MIRROR_FAILURES] += nins->ipv6_mirror_failures;
++#endif
+ 
+ 	for (i = 0; i < NSS_IPV6_EXCEPTION_EVENT_MAX; i++) {
+ 		nss_ipv6_exception_stats[i] += nins->exception_events[i];
+-- 
+2.31.1
+
