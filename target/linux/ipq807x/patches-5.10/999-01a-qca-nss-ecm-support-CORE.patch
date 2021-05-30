@@ -307,7 +307,7 @@
 +
 +		fdb_event.dev = fdb->dst->dev;
 +		ether_addr_copy(fdb_event.addr, fdb->key.addr.addr);
-+		fdb_event.is_local = test_bit(BR_FDB_LOCAL, &fdb->dst->flags);
++		fdb_event.is_local = test_bit(BR_FDB_LOCAL, &fdb->flags);
 +		atomic_notifier_call_chain(&br_fdb_notifier_list,
 +					   event,
 +					   (void *)&fdb_event);
