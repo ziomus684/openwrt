@@ -1,0 +1,35 @@
+jobs:
+  my_job:
+    runs-on: ubuntu-latest
+    env:         # define env 
+      GIT_DEPTH: 1
+      CI_SOURCE_URL: https://gitlab.com/ynezz/openwrt-ci/raw/master
+      CI_TARGET_BUILD_CONFIG_EXTRA: +BUILDBOT +DEVEL +KERNEL_KALLSYMS +TESTING_KERNEL +BUILD_LOG -IB -SDK -PACKAGE_kmod-acx-mac80211
+      CI_TARGET_SDK_BRANCH: master
+    steps:
+      - name: checkout        # checkout repo content
+        uses: https://gitlab.com/ynezz/openwrt-ci
+      # - name: cache       # cache the two directories, 'key' parameter is required by the action.
+      #   uses: actions/cache@v2
+      #   with:
+      #     path: |
+      #       ~/.m2/repository
+      #       target
+      #     key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+      - name: prepare
+        run: |
+          apk add make bash
+          wget -q $CI_SOURCE_URL/Makefile -O Makefile.ci
+          make ci-prepare -f Makefile.ci
+      - name: build
+          # export CI_TARGET_BUILD_PLATFORM="$(echo $CI_JOB_NAME | sed 's/target build \(.*\) .*/\1/')"
+          # export CI_TARGET_BUILD_SUBTARGET="$(echo $CI_JOB_NAME | sed 's/target build .* \(.*\)/\1/')"
+        run: |
+          export CI_TARGET_BUILD_PLATFORM="ipq40xx"
+          export CI_TARGET_BUILD_SUBTARGET="generic"
+          chown buildbot.buildbot -R $PWD
+          gosu buildbot wget -q $CI_SOURCE_URL/Makefile -O Makefile.ci
+          gosu buildbot make ci-prepare -f Makefile.ci
+          gosu buildbot make ci-target-build-prepare -f Makefile.ci
+          gosu buildbot make ci-target-build-download -f Makefile.ci
+          gosu buildbot make ci-target-build-run -f Makefile.ci
