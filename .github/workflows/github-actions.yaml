@@ -37,6 +37,19 @@ jobs:
           wget -q $CI_SOURCE_URL/Makefile -O Makefile.ci
           make ci-prepare -f Makefile.ci
           addgroup -S buildbot && adduser -S buildbot -G buildbot
+
+      - name: Restore dl cache
+        uses: actions/cache@v1
+        with:
+          path: ~/openwrt/dl
+          key: openwrt-dl-${{ hashFiles('openwrt/openwrt/dl') }}
+
+      - name: Restore tools cache
+        uses: actions/cache@v1
+        with:
+          path: ~/openwrt/staging_dir/tools
+          key: openwrt-tools-${{ hashFiles('openwrt/openwrt/staging_dir/tools') }}
+
       - name: build
           # export CI_TARGET_BUILD_PLATFORM="$(echo $CI_JOB_NAME | sed 's/target build \(.*\) .*/\1/')"
           # export CI_TARGET_BUILD_SUBTARGET="$(echo $CI_JOB_NAME | sed 's/target build .* \(.*\)/\1/')"
