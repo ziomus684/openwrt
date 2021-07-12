@@ -1,6 +1,13 @@
+on:
+  # Trigger the workflow on push or pull request,
+  # but only for the main branch
+  push:
+    branches:
+      - gitlab-ci
 jobs:
   my_job:
     runs-on: ubuntu-latest
+    container: alpine
     env:         # define env 
       GIT_DEPTH: 1
       CI_SOURCE_URL: https://gitlab.com/ynezz/openwrt-ci/raw/master
@@ -8,7 +15,10 @@ jobs:
       CI_TARGET_SDK_BRANCH: master
     steps:
       - name: checkout        # checkout repo content
-        uses: https://gitlab.com/ynezz/openwrt-ci
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 1
+          ref: gitlab-ci
       # - name: cache       # cache the two directories, 'key' parameter is required by the action.
       #   uses: actions/cache@v2
       #   with:
@@ -17,19 +27,29 @@ jobs:
       #       target
       #     key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
       - name: prepare
+          # wget -q $CI_SOURCE_URL/Makefile -O Makefile.ci
+          # make ci-prepare -f Makefile.ci
         run: |
-          apk add make bash
+          apk add make bash asciidoc bash bc binutils bzip2 cdrkit coreutils diffutils \
+          findutils flex g++ gawk gcc gettext git grep intltool libxslt \
+          linux-headers make ncurses-dev openssl-dev patch perl \
+          python2-dev python3-dev rsync tar unzip util-linux wget zlib-dev curl su-exec
           wget -q $CI_SOURCE_URL/Makefile -O Makefile.ci
           make ci-prepare -f Makefile.ci
+          addgroup -S buildbot && adduser -S buildbot -G buildbot
       - name: build
           # export CI_TARGET_BUILD_PLATFORM="$(echo $CI_JOB_NAME | sed 's/target build \(.*\) .*/\1/')"
           # export CI_TARGET_BUILD_SUBTARGET="$(echo $CI_JOB_NAME | sed 's/target build .* \(.*\)/\1/')"
+          # chown buildbot.buildbot -R $PWD
+          # gosu buildbot wget -q $CI_SOURCE_URL/Makefile -O Makefile.ci
+          # gosu buildbot make ci-prepare -f Makefile.ci
+          # gosu buildbot make ci-target-build-prepare -f Makefile.ci
+          # gosu buildbot make ci-target-build-download -f Makefile.ci
+          # gosu buildbot make ci-target-build-run -f Makefile.ci
         run: |
           export CI_TARGET_BUILD_PLATFORM="ipq40xx"
           export CI_TARGET_BUILD_SUBTARGET="generic"
           chown buildbot.buildbot -R $PWD
-          gosu buildbot wget -q $CI_SOURCE_URL/Makefile -O Makefile.ci
-          gosu buildbot make ci-prepare -f Makefile.ci
-          gosu buildbot make ci-target-build-prepare -f Makefile.ci
-          gosu buildbot make ci-target-build-download -f Makefile.ci
-          gosu buildbot make ci-target-build-run -f Makefile.ci
+          su-exec buildbot make ci-target-build-prepare -f Makefile.ci
+          su-exec buildbot make ci-target-build-download -f Makefile.ci
+          su-exec buildbot make ci-target-build-run -f Makefile.ci
