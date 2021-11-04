@@ -1,0 +1,51 @@
+From 5ccb7f1249550621bb82711a746684d16e4090f6 Mon Sep 17 00:00:00 2001
+From: Ansuel Smith <ansuelsmth@gmail.com>
+Date: Tue, 2 Nov 2021 21:10:24 +0100
+Subject: [PATCH 05/14] net: dsa: qca8k: set regmap init as mandatory for
+ regmap conversion
+
+In preparation for regmap conversion, make regmap init mandatory and
+fail if any error occurs.
+
+Signed-off-by: Ansuel Smith <ansuelsmth@gmail.com>
+---
+ drivers/net/dsa/qca8k.c | 16 ++++++++--------
+ 1 file changed, 8 insertions(+), 8 deletions(-)
+
+diff --git a/drivers/net/dsa/qca8k.c b/drivers/net/dsa/qca8k.c
+index 9f75301a2001..1f44a4fb9fc2 100644
+--- a/drivers/net/dsa/qca8k.c
++++ b/drivers/net/dsa/qca8k.c
+@@ -1105,6 +1105,14 @@ qca8k_setup(struct dsa_switch *ds)
+ 	int cpu_port, ret, i;
+ 	u32 mask;
+ 
++	/* Start by setting up the register mapping */
++	priv->regmap = devm_regmap_init(ds->dev, NULL, priv,
++					&qca8k_regmap_config);
++	if (IS_ERR(priv->regmap)) {
++		dev_warn(priv->dev, "regmap initialization failed");
++		return PTR_ERR(priv->regmap);
++	}
++
+ 	/* Check the detected switch id */
+ 	ret = qca8k_read_switch_id(priv);
+ 	if (ret)
+@@ -1121,14 +1129,6 @@ qca8k_setup(struct dsa_switch *ds)
+ 	if (ret)
+ 		return ret;
+ 
+-	mutex_init(&priv->reg_mutex);
+-
+-	/* Start by setting up the register mapping */
+-	priv->regmap = devm_regmap_init(ds->dev, NULL, priv,
+-					&qca8k_regmap_config);
+-	if (IS_ERR(priv->regmap))
+-		dev_warn(priv->dev, "regmap initialization failed");
+-
+ 	ret = qca8k_setup_mdio_bus(priv);
+ 	if (ret)
+ 		return ret;
+-- 
+2.32.0
+

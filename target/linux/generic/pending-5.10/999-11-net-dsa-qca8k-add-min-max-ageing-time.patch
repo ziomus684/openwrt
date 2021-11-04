@@ -1,0 +1,41 @@
+From a9ba2f65ba92bb994ff09372baf9417eb9e8cace Mon Sep 17 00:00:00 2001
+From: Ansuel Smith <ansuelsmth@gmail.com>
+Date: Mon, 18 Oct 2021 02:41:42 +0200
+Subject: [PATCH 11/14] net: dsa: qca8k: add min/max ageing time
+
+Add min and max ageing value for qca8k switch.
+
+Signed-off-by: Ansuel Smith <ansuelsmth@gmail.com>
+---
+ drivers/net/dsa/qca8k.c | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/net/dsa/qca8k.c b/drivers/net/dsa/qca8k.c
+index c0cc3923af9d..d236ff0cfb1e 100644
+--- a/drivers/net/dsa/qca8k.c
++++ b/drivers/net/dsa/qca8k.c
+@@ -1286,6 +1286,10 @@ qca8k_setup(struct dsa_switch *ds)
+ 	/* We don't have interrupts for link changes, so we need to poll */
+ 	ds->pcs_poll = true;
+ 
++	/* Set min a max ageing value supported */
++	ds->ageing_time_min = 7000;
++	ds->ageing_time_max = 458745000;
++
+ 	return 0;
+ }
+ 
+@@ -1838,8 +1842,8 @@ qca8k_set_ageing_time(struct dsa_switch *ds, unsigned int msecs)
+ 	if (val > FIELD_MAX(QCA8K_ATU_AGE_TIME_MASK))
+ 		return -ERANGE;
+ 
+-	return qca8k_rmw(priv, QCA8K_REG_ATU_CTRL, QCA8K_ATU_AGE_TIME_MASK,
+-			 QCA8K_ATU_AGE_TIME(val));
++	return regmap_update_bits(priv->regmap, QCA8K_REG_ATU_CTRL,
++				  QCA8K_ATU_AGE_TIME_MASK, QCA8K_ATU_AGE_TIME(val));
+ }
+ 
+ static int
+-- 
+2.32.0
+

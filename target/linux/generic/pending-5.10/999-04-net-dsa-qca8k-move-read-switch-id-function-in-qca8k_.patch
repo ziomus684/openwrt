@@ -1,0 +1,125 @@
+From be4b3e3a7643c4fa9e2bb675ff5ed7b8770d4d55 Mon Sep 17 00:00:00 2001
+From: Ansuel Smith <ansuelsmth@gmail.com>
+Date: Tue, 2 Nov 2021 21:02:18 +0100
+Subject: [PATCH 04/14] net: dsa: qca8k: move read switch id function in
+ qca8k_setup
+
+Move read_switch_id function in qca8k_setup in preparation for regmap
+conversion. Sw probe should NOT contain function that depends on reading
+from switch regs.
+
+Signed-off-by: Ansuel Smith <ansuelsmth@gmail.com>
+---
+ drivers/net/dsa/qca8k.c | 71 ++++++++++++++++++++---------------------
+ 1 file changed, 35 insertions(+), 36 deletions(-)
+
+diff --git a/drivers/net/dsa/qca8k.c b/drivers/net/dsa/qca8k.c
+index 1e32467948b2..9f75301a2001 100644
+--- a/drivers/net/dsa/qca8k.c
++++ b/drivers/net/dsa/qca8k.c
+@@ -1068,6 +1068,36 @@ qca8k_parse_port_config(struct qca8k_priv *priv)
+ 	return 0;
+ }
+ 
++static int qca8k_read_switch_id(struct qca8k_priv *priv)
++{
++	const struct qca8k_match_data *data;
++	u32 val;
++	u8 id;
++	int ret;
++
++	/* get the switches ID from the compatible */
++	data = of_device_get_match_data(priv->dev);
++	if (!data)
++		return -ENODEV;
++
++	ret = qca8k_read(priv, QCA8K_REG_MASK_CTRL, &val);
++	if (ret < 0)
++		return -ENODEV;
++
++	id = QCA8K_MASK_CTRL_DEVICE_ID(val);
++	if (id != data->id) {
++		dev_err(priv->dev, "Switch id detected %x but expected %x", id, data->id);
++		return -ENODEV;
++	}
++
++	priv->switch_id = id;
++
++	/* Save revision to communicate to the internal PHY driver */
++	priv->switch_revision = QCA8K_MASK_CTRL_REV_ID(val);
++
++	return 0;
++}
++
+ static int
+ qca8k_setup(struct dsa_switch *ds)
+ {
+@@ -1075,6 +1105,11 @@ qca8k_setup(struct dsa_switch *ds)
+ 	int cpu_port, ret, i;
+ 	u32 mask;
+ 
++	/* Check the detected switch id */
++	ret = qca8k_read_switch_id(priv);
++	if (ret)
++		return ret;
++
+ 	cpu_port = qca8k_find_cpu_port(ds);
+ 	if (cpu_port < 0) {
+ 		dev_err(priv->dev, "No cpu port configured in both cpu port0 and port6");
+@@ -2015,41 +2050,10 @@ static const struct dsa_switch_ops qca8k_switch_ops = {
+ 	.get_phy_flags		= qca8k_get_phy_flags,
+ };
+ 
+-static int qca8k_read_switch_id(struct qca8k_priv *priv)
+-{
+-	const struct qca8k_match_data *data;
+-	u32 val;
+-	u8 id;
+-	int ret;
+-
+-	/* get the switches ID from the compatible */
+-	data = of_device_get_match_data(priv->dev);
+-	if (!data)
+-		return -ENODEV;
+-
+-	ret = qca8k_read(priv, QCA8K_REG_MASK_CTRL, &val);
+-	if (ret < 0)
+-		return -ENODEV;
+-
+-	id = QCA8K_MASK_CTRL_DEVICE_ID(val);
+-	if (id != data->id) {
+-		dev_err(priv->dev, "Switch id detected %x but expected %x", id, data->id);
+-		return -ENODEV;
+-	}
+-
+-	priv->switch_id = id;
+-
+-	/* Save revision to communicate to the internal PHY driver */
+-	priv->switch_revision = QCA8K_MASK_CTRL_REV_ID(val);
+-
+-	return 0;
+-}
+-
+ static int
+ qca8k_sw_probe(struct mdio_device *mdiodev)
+ {
+ 	struct qca8k_priv *priv;
+-	int ret;
+ 
+ 	/* allocate the private data struct so that we can probe the switches
+ 	 * ID register
+@@ -2075,11 +2079,6 @@ qca8k_sw_probe(struct mdio_device *mdiodev)
+ 		gpiod_set_value_cansleep(priv->reset_gpio, 0);
+ 	}
+ 
+-	/* Check the detected switch id */
+-	ret = qca8k_read_switch_id(priv);
+-	if (ret)
+-		return ret;
+-
+ 	priv->ds = devm_kzalloc(&mdiodev->dev, sizeof(*priv->ds), GFP_KERNEL);
+ 	if (!priv->ds)
+ 		return -ENOMEM;
+-- 
+2.32.0
+
