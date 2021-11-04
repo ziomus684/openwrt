@@ -1,7 +1,7 @@
-From b5dbfe3c6f81f175556f7483b2a2af275f26c3c9 Mon Sep 17 00:00:00 2001
+From 6377b8f6d1772194d7d1b93e803697ad2117ebb2 Mon Sep 17 00:00:00 2001
 From: Ansuel Smith <ansuelsmth@gmail.com>
 Date: Mon, 18 Oct 2021 02:47:14 +0200
-Subject: [PATCH 14/14] net: dsa: qca8k: enable mtu_enforcement_ingress
+Subject: [PATCH 14/17] net: dsa: qca8k: enable mtu_enforcement_ingress
 
 qca8k have a global MTU. Inform DSA of this as the change MTU port
 function checks the max MTU across all port and sets the max value
@@ -13,7 +13,7 @@ Signed-off-by: Ansuel Smith <ansuelsmth@gmail.com>
  1 file changed, 3 insertions(+)
 
 diff --git a/drivers/net/dsa/qca8k.c b/drivers/net/dsa/qca8k.c
-index 5ef39a079a03..b47ca1a78073 100644
+index fe63e16693f5..a25d9de8eb80 100644
 --- a/drivers/net/dsa/qca8k.c
 +++ b/drivers/net/dsa/qca8k.c
 @@ -1310,6 +1310,9 @@ qca8k_setup(struct dsa_switch *ds)

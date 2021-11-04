@@ -1,7 +1,7 @@
 From 1948dff8eb786a6d3a42f37e367a1df9d2c172ac Mon Sep 17 00:00:00 2001
 From: Ansuel Smith <ansuelsmth@gmail.com>
 Date: Sat, 9 Oct 2021 02:54:27 +0200
-Subject: [PATCH 08/14] net: dsa: qca8k: add support for port fast aging
+Subject: [PATCH 08/17] net: dsa: qca8k: add support for port fast aging
 
 The switch doesn't support fast aging but it does support the flush of
 the ARL table for a specific port. Add this function to simulate

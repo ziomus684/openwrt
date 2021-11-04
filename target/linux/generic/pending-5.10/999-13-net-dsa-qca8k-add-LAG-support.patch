@@ -1,7 +1,7 @@
-From 7da2b6666352017a74b14a47f4fb48c10156e93e Mon Sep 17 00:00:00 2001
+From 9b7d80501c9782b0c01a056fb9116d05c9fde723 Mon Sep 17 00:00:00 2001
 From: Ansuel Smith <ansuelsmth@gmail.com>
 Date: Mon, 18 Oct 2021 02:30:23 +0200
-Subject: [PATCH 13/14] net: dsa: qca8k: add LAG support
+Subject: [PATCH 13/17] net: dsa: qca8k: add LAG support
 
 Add LAG support to this switch. In Documentation this is described as
 trunk mode. A max of 4 LAGs are supported and each can support up to 4
@@ -17,7 +17,7 @@ Signed-off-by: Ansuel Smith <ansuelsmth@gmail.com>
  2 files changed, 141 insertions(+)
 
 diff --git a/drivers/net/dsa/qca8k.c b/drivers/net/dsa/qca8k.c
-index 5975da545a73..5ef39a079a03 100644
+index d971d56dace0..fe63e16693f5 100644
 --- a/drivers/net/dsa/qca8k.c
 +++ b/drivers/net/dsa/qca8k.c
 @@ -1307,6 +1307,9 @@ qca8k_setup(struct dsa_switch *ds)
@@ -159,7 +159,7 @@ index 5975da545a73..5ef39a079a03 100644
  
  static int
 diff --git a/drivers/net/dsa/qca8k.h b/drivers/net/dsa/qca8k.h
-index 7c87a968c010..6e47c562e5e8 100644
+index 7c87a968c010..1465fe171687 100644
 --- a/drivers/net/dsa/qca8k.h
 +++ b/drivers/net/dsa/qca8k.h
 @@ -15,6 +15,8 @@
@@ -193,9 +193,9 @@ index 7c87a968c010..6e47c562e5e8 100644
 +#define QCA8K_REG_GOL_TRUNK_ID_SHIFT(_i)		(((_i) / 2) * 16)
 +#define QCA8K_REG_GOL_MEM_ID_SHIFT(_i)			((_i) * 4)
 +/* Complex shift: FIRST shift for port THEN shift for trunk */
-+#define QCA8K_REG_GOL_TRUNK_ID_MEM_ID_SHIFT(_i,_j)	(QCA8K_REG_GOL_MEM_ID_SHIFT(_j) + QCA8K_REG_GOL_TRUNK_ID_SHIFT(_i))
-+#define QCA8K_REG_GOL_TRUNK_ID_MEM_ID_EN(_i,_j)		(QCA8K_REG_GOL_TRUNK_ID_MEM_ID_EN_MASK << QCA8K_REG_GOL_TRUNK_ID_MEM_ID_SHIFT(_i,_j))
-+#define QCA8K_REG_GOL_TRUNK_ID_MEM_ID_PORT(_i,_j)	(QCA8K_REG_GOL_TRUNK_ID_MEM_ID_PORT_MASK << QCA8K_REG_GOL_TRUNK_ID_MEM_ID_SHIFT(_i,_j))
++#define QCA8K_REG_GOL_TRUNK_ID_MEM_ID_SHIFT(_i, _j)	(QCA8K_REG_GOL_MEM_ID_SHIFT(_j) + QCA8K_REG_GOL_TRUNK_ID_SHIFT(_i))
++#define QCA8K_REG_GOL_TRUNK_ID_MEM_ID_EN(_i, _j)	(QCA8K_REG_GOL_TRUNK_ID_MEM_ID_EN_MASK << QCA8K_REG_GOL_TRUNK_ID_MEM_ID_SHIFT(_i, _j))
++#define QCA8K_REG_GOL_TRUNK_ID_MEM_ID_PORT(_i, _j)	(QCA8K_REG_GOL_TRUNK_ID_MEM_ID_PORT_MASK << QCA8K_REG_GOL_TRUNK_ID_MEM_ID_SHIFT(_i, _j))
 +
  #define QCA8K_REG_GLOBAL_FC_THRESH			0x800
  #define   QCA8K_GLOBAL_FC_GOL_XON_THRES_MASK		GENMASK(24, 16)

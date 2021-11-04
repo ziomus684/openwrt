@@ -1,7 +1,7 @@
 From 82dbb61319d90388648927204648507b37cd040b Mon Sep 17 00:00:00 2001
 From: Ansuel Smith <ansuelsmth@gmail.com>
 Date: Sat, 9 Oct 2021 02:57:16 +0200
-Subject: [PATCH 09/14] net: dsa: qca8k: add support for mirror mode
+Subject: [PATCH 09/17] net: dsa: qca8k: add support for mirror mode
 
 The switch support mirror mode. Only one port can set as mirror port and
 every other port can set to both ingress and egress mode. The mirror

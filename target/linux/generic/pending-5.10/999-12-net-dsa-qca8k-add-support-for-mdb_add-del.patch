@@ -1,7 +1,7 @@
-From 3ef591b7cf337ab7141656c7570a7462a4485d7b Mon Sep 17 00:00:00 2001
+From f33d09edfcd53b24a8ca23bd471c90e1ec0fed98 Mon Sep 17 00:00:00 2001
 From: Ansuel Smith <ansuelsmth@gmail.com>
 Date: Mon, 18 Oct 2021 00:37:05 +0200
-Subject: [PATCH 12/14] net: dsa: qca8k: add support for mdb_add/del
+Subject: [PATCH 12/17] net: dsa: qca8k: add support for mdb_add/del
 
 Add support for mdb add/dell function. The ARL table is used to insert
 the rule. A new search function is introduced to search the rule and add
@@ -15,7 +15,7 @@ Signed-off-by: Ansuel Smith <ansuelsmth@gmail.com>
  1 file changed, 82 insertions(+)
 
 diff --git a/drivers/net/dsa/qca8k.c b/drivers/net/dsa/qca8k.c
-index d236ff0cfb1e..5975da545a73 100644
+index d236ff0cfb1e..d971d56dace0 100644
 --- a/drivers/net/dsa/qca8k.c
 +++ b/drivers/net/dsa/qca8k.c
 @@ -417,6 +417,23 @@ qca8k_fdb_flush(struct qca8k_priv *priv)
@@ -48,7 +48,7 @@ index d236ff0cfb1e..5975da545a73 100644
  
 +static int
 +qca8k_port_mdb_add(struct dsa_switch *ds, int port,
-+		    const struct switchdev_obj_port_mdb *mdb)
++		   const struct switchdev_obj_port_mdb *mdb)
 +{
 +	struct qca8k_priv *priv = ds->priv;
 +	struct qca8k_fdb fdb = { 0 };
@@ -77,7 +77,7 @@ index d236ff0cfb1e..5975da545a73 100644
 +
 +static int
 +qca8k_port_mdb_del(struct dsa_switch *ds, int port,
-+		    const struct switchdev_obj_port_mdb *mdb)
++		   const struct switchdev_obj_port_mdb *mdb)
 +{
 +	struct qca8k_priv *priv = ds->priv;
 +	struct qca8k_fdb fdb = { 0 };

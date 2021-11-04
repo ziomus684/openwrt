@@ -1,7 +1,7 @@
 From 911554a0ab3c54ebff70444c37c30f3653c423ac Mon Sep 17 00:00:00 2001
 From: Ansuel Smith <ansuelsmth@gmail.com>
 Date: Tue, 2 Nov 2021 23:40:35 +0100
-Subject: [PATCH 07/14] net: dsa: qca8k: add additional MIB counter and make it
+Subject: [PATCH 07/17] net: dsa: qca8k: add additional MIB counter and make it
  dynamic
 
 We are currently missing 2 additional MIB counter present in QCA833x

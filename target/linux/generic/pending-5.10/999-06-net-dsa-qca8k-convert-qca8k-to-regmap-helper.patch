@@ -1,7 +1,7 @@
 From e7cc249f400906d04f78dd7952d47f60812c8492 Mon Sep 17 00:00:00 2001
 From: Ansuel Smith <ansuelsmth@gmail.com>
 Date: Tue, 2 Nov 2021 21:51:21 +0100
-Subject: [PATCH 06/14] net: dsa: qca8k: convert qca8k to regmap helper
+Subject: [PATCH 06/17] net: dsa: qca8k: convert qca8k to regmap helper
 
 Convert any qca8k read/write/rmw/set/clear/pool to regmap helper and add
 missing config to regmap_config struct.

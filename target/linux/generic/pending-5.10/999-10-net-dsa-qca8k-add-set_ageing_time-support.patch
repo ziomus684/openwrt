@@ -1,7 +1,7 @@
 From 1e5320325c25fadf0281e6196fd19f41edd4d2da Mon Sep 17 00:00:00 2001
 From: Ansuel Smith <ansuelsmth@gmail.com>
 Date: Mon, 18 Oct 2021 00:30:45 +0200
-Subject: [PATCH 10/14] net: dsa: qca8k: add set_ageing_time support
+Subject: [PATCH 10/17] net: dsa: qca8k: add set_ageing_time support
 
 qca8k support setting ageing time in set of 7s. Add support for it and
 return error with value greater than the max value accepted of 7645m.

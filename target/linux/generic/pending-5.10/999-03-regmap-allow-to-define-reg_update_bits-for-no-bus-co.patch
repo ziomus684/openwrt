@@ -1,7 +1,7 @@
 From 4db4826bc905149a375b6c7d25a2ce5f767f3d14 Mon Sep 17 00:00:00 2001
 From: Ansuel Smith <ansuelsmth@gmail.com>
 Date: Tue, 2 Nov 2021 20:48:58 +0100
-Subject: [PATCH 03/14] regmap: allow to define reg_update_bits for no bus
+Subject: [PATCH 03/17] regmap: allow to define reg_update_bits for no bus
  configuration
 
 Some device requires a special handling for reg_update_bits and can't use

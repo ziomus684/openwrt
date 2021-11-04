@@ -1,0 +1,74 @@
+From 698792b0815b90445dbd6992147dda6dc2ff67df Mon Sep 17 00:00:00 2001
+From: Ansuel Smith <ansuelsmth@gmail.com>
+Date: Thu, 4 Nov 2021 02:41:56 +0100
+Subject: [PATCH 16/17] net: dsa: qca8k: use device_get_match_data instead of
+ the OF variant
+
+Drop of_platform include and device_get_match_data instead of the OF
+variant.
+
+Signed-off-by: Ansuel Smith <ansuelsmth@gmail.com>
+---
+ drivers/net/dsa/qca/qca8k.c | 11 +++++------
+ 1 file changed, 5 insertions(+), 6 deletions(-)
+
+diff --git a/drivers/net/dsa/qca/qca8k.c b/drivers/net/dsa/qca/qca8k.c
+index a25d9de8eb80..71fcdd513c14 100644
+--- a/drivers/net/dsa/qca/qca8k.c
++++ b/drivers/net/dsa/qca/qca8k.c
+@@ -14,7 +14,6 @@
+ #include <net/dsa.h>
+ #include <linux/of_net.h>
+ #include <linux/of_mdio.h>
+-#include <linux/of_platform.h>
+ #include <linux/if_bridge.h>
+ #include <linux/mdio.h>
+ #include <linux/phylink.h>
+@@ -929,7 +928,7 @@ qca8k_setup_of_pws_reg(struct qca8k_priv *priv)
+ 	 * Should be applied by default but we set this just to make sure.
+ 	 */
+ 	if (priv->switch_id == QCA8K_ID_QCA8327) {
+-		data = of_device_get_match_data(priv->dev);
++		data = device_get_match_data(priv->dev);
+ 
+ 		/* Set the correct package of 148 pin for QCA8327 */
+ 		if (data->reduced_package)
+@@ -1066,7 +1065,7 @@ static int qca8k_read_switch_id(struct qca8k_priv *priv)
+ 	int ret;
+ 
+ 	/* get the switches ID from the compatible */
+-	data = of_device_get_match_data(priv->dev);
++	data = device_get_match_data(priv->dev);
+ 	if (!data)
+ 		return -ENODEV;
+ 
+@@ -1666,7 +1665,7 @@ qca8k_get_strings(struct dsa_switch *ds, int port, u32 stringset, uint8_t *data)
+ 	if (stringset != ETH_SS_STATS)
+ 		return;
+ 
+-	match_data = of_device_get_match_data(priv->dev);
++	match_data = device_get_match_data(priv->dev);
+ 
+ 	for (i = 0; i < match_data->mib_count; i++)
+ 		strncpy(data + i * ETH_GSTRING_LEN, ar8327_mib[i].name,
+@@ -1684,7 +1683,7 @@ qca8k_get_ethtool_stats(struct dsa_switch *ds, int port,
+ 	u32 hi = 0;
+ 	int ret;
+ 
+-	match_data = of_device_get_match_data(priv->dev);
++	match_data = device_get_match_data(priv->dev);
+ 
+ 	for (i = 0; i < match_data->mib_count; i++) {
+ 		mib = &ar8327_mib[i];
+@@ -1715,7 +1714,7 @@ qca8k_get_sset_count(struct dsa_switch *ds, int port, int sset)
+ 	if (sset != ETH_SS_STATS)
+ 		return 0;
+ 
+-	match_data = of_device_get_match_data(priv->dev);
++	match_data = device_get_match_data(priv->dev);
+ 
+ 	return match_data->mib_count;
+ }
+-- 
+2.32.0
+

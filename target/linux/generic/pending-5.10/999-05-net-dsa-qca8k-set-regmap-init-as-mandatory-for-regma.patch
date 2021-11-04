@@ -1,7 +1,7 @@
 From 5ccb7f1249550621bb82711a746684d16e4090f6 Mon Sep 17 00:00:00 2001
 From: Ansuel Smith <ansuelsmth@gmail.com>
 Date: Tue, 2 Nov 2021 21:10:24 +0100
-Subject: [PATCH 05/14] net: dsa: qca8k: set regmap init as mandatory for
+Subject: [PATCH 05/17] net: dsa: qca8k: set regmap init as mandatory for
  regmap conversion
 
 In preparation for regmap conversion, make regmap init mandatory and

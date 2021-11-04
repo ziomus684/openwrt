@@ -1,7 +1,7 @@
 From be4b3e3a7643c4fa9e2bb675ff5ed7b8770d4d55 Mon Sep 17 00:00:00 2001
 From: Ansuel Smith <ansuelsmth@gmail.com>
 Date: Tue, 2 Nov 2021 21:02:18 +0100
-Subject: [PATCH 04/14] net: dsa: qca8k: move read switch id function in
+Subject: [PATCH 04/17] net: dsa: qca8k: move read switch id function in
  qca8k_setup
 
 Move read_switch_id function in qca8k_setup in preparation for regmap

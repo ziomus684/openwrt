@@ -1,7 +1,7 @@
 From 563d2b515c023dd0ec1d18be40c95f704eb38cfb Mon Sep 17 00:00:00 2001
 From: Ansuel Smith <ansuelsmth@gmail.com>
 Date: Fri, 1 Oct 2021 03:37:29 +0200
-Subject: [PATCH 02/14] net: dsa: qca8k: convert to
+Subject: [PATCH 02/17] net: dsa: qca8k: convert to
  GENMASK/FIELD_PREP/FIELD_GET
 
 Convert and try to standardize bit fields using
