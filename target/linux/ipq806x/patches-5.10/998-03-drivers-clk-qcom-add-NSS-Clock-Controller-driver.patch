@@ -1,0 +1,320 @@
+From eca5ed56a4fbd0f1d6b86d4ea68739934d13b225 Mon Sep 17 00:00:00 2001
+From: Ansuel Smith <ansuelsmth@gmail.com>
+Date: Fri, 12 Nov 2021 00:33:01 +0100
+Subject: [PATCH 3/3] drivers: clk: qcom: add NSS Clock Controller driver
+
+Add NSS Clock Controller driver. This is used to scale the NSS core
+present on ipq806x SoC. These core are Ubi32 core that require to be
+scaled at the same time and require a safe parent before scaling. The
+driver require declaration of OPP as it does scale voltage with
+frequency change.
+The safe parent is calculated assuming the gcc declaration won't ever
+change and the P_PLL0 index is extracted by the present enum in gcc.
+This is to skip complex interaction with the gcc driver and to keep the
+driver completely detached from it.
+
+Signed-off-by: Ansuel Smith <ansuelsmth@gmail.com>
+---
+ drivers/clk/qcom/Makefile |   1 +
+ drivers/clk/qcom/nss-cc.c | 280 ++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 281 insertions(+)
+ create mode 100644 drivers/clk/qcom/nss-cc.c
+
+diff --git a/drivers/clk/qcom/Makefile b/drivers/clk/qcom/Makefile
+index 9825ef843f4a..1232f142b0fd 100644
+--- a/drivers/clk/qcom/Makefile
++++ b/drivers/clk/qcom/Makefile
+@@ -95,3 +95,4 @@ obj-$(CONFIG_SPMI_PMIC_CLKDIV) += clk-spmi-pmic-div.o
+ obj-$(CONFIG_KPSS_XCC) += kpss-xcc.o
+ obj-$(CONFIG_QCOM_HFPLL) += hfpll.o
+ obj-$(CONFIG_KRAITCC) += krait-cc.o
++obj-$(CONFIG_QCOM_NSSCC) += nss-cc.o
+diff --git a/drivers/clk/qcom/nss-cc.c b/drivers/clk/qcom/nss-cc.c
+new file mode 100644
+index 000000000000..ae4661207257
+--- /dev/null
++++ b/drivers/clk/qcom/nss-cc.c
+@@ -0,0 +1,280 @@
++// SPDX-License-Identifier: GPL-2.0
++
++#include <linux/kernel.h>
++#include <linux/init.h>
++#include <linux/module.h>
++#include <linux/platform_device.h>
++#include <linux/err.h>
++#include <linux/io.h>
++#include <linux/of.h>
++#include <linux/of_device.h>
++#include <linux/clk.h>
++#include <linux/clk-provider.h>
++#include <linux/pm_opp.h>
++
++#include "common.h"
++#include "clk-rcg.h"
++
++/* Extracted from enum in gcc-ipq806x */
++#define P_PLL0 3
++/* Calculated from get index from gcc-ipq806x */
++#define NSS_SAFE_PARENT 2
++
++struct clk_nss {
++	struct clk_hw *ubi32_core1;
++	struct clk_hw *ubi32_core2;
++	struct clk_hw hw;
++};
++
++#define to_clk_nss(_hw) container_of(_hw, struct clk_nss, hw)
++
++static int nss_core_clk_set_rate(struct clk_hw *hw, unsigned long rate,
++				 unsigned long parent_rate)
++{
++	struct clk_nss *clk_nss;
++	int ret;
++
++	clk_nss = to_clk_nss(hw);
++
++	ret = clk_dyn_rcg_ops.set_rate(clk_nss->ubi32_core1, rate,
++				       parent_rate);
++	if (ret)
++		return ret;
++
++	ret = clk_dyn_rcg_ops.set_rate(clk_nss->ubi32_core2, rate,
++				       parent_rate);
++
++	return ret;
++}
++
++static int
++nss_core_clk_set_rate_and_parent(struct clk_hw *hw, unsigned long rate,
++				 unsigned long parent_rate, u8 index)
++{
++	struct clk_nss *clk_nss;
++	int ret;
++
++	clk_nss = to_clk_nss(hw);
++
++	ret = clk_dyn_rcg_ops.set_rate_and_parent(clk_nss->ubi32_core1,
++						  rate, parent_rate, index);
++	if (ret)
++		return ret;
++
++	ret = clk_dyn_rcg_ops.set_rate_and_parent(clk_nss->ubi32_core2,
++						  rate, parent_rate, index);
++
++	return ret;
++}
++
++static int nss_core_clk_determine_rate(struct clk_hw *hw,
++				       struct clk_rate_request *req)
++{
++	struct clk_nss *clk_nss;
++
++	clk_nss = to_clk_nss(hw);
++
++	return clk_dyn_rcg_ops.determine_rate(clk_nss->ubi32_core1,
++					      req);
++}
++
++static unsigned long
++nss_core_clk_recalc_rate(struct clk_hw *hw, unsigned long parent_rate)
++{
++	struct clk_nss *clk_nss;
++
++	clk_nss = to_clk_nss(hw);
++
++	return clk_dyn_rcg_ops.recalc_rate(clk_nss->ubi32_core1,
++					   parent_rate);
++}
++
++static u8 nss_core_clk_get_parent(struct clk_hw *hw)
++{
++	struct clk_nss *clk_nss;
++
++	clk_nss = to_clk_nss(hw);
++
++	return clk_dyn_rcg_ops.get_parent(clk_nss->ubi32_core1);
++}
++
++static int nss_core_clk_set_parent(struct clk_hw *hw, u8 i)
++{
++	struct freq_tbl f = {  200000000, P_PLL0, 2,  1, 2 };
++	struct clk_dyn_rcg *rcg;
++	struct clk_nss *clk_nss;
++	int ret;
++
++	clk_nss = to_clk_nss(hw);
++
++	/* P_PLL0 is 800 Mhz which needs to be divided for 200 Mhz */
++	if (i == NSS_SAFE_PARENT) {
++		rcg = to_clk_dyn_rcg(clk_nss->ubi32_core1);
++		clk_dyn_configure_bank(rcg, &f);
++
++		rcg = to_clk_dyn_rcg(clk_nss->ubi32_core2);
++		clk_dyn_configure_bank(rcg, &f);
++
++		return 0;
++	}
++
++	ret = clk_dyn_rcg_ops.set_parent(clk_nss->ubi32_core1, i);
++	if (ret)
++		return ret;
++
++	return clk_dyn_rcg_ops.set_parent(clk_nss->ubi32_core2, i);
++}
++
++const struct clk_ops clk_ops_nss_core = {
++	.set_rate = nss_core_clk_set_rate,
++	.set_rate_and_parent = nss_core_clk_set_rate_and_parent,
++	.determine_rate = nss_core_clk_determine_rate,
++	.recalc_rate = nss_core_clk_recalc_rate,
++	.get_parent = nss_core_clk_get_parent,
++	.set_parent = nss_core_clk_set_parent,
++};
++
++struct nss_notifier_clk {
++	struct notifier_block clk_nb;
++	struct clk_hw *core_hw;
++};
++
++static int nss_notifier_cb(struct notifier_block *nb, unsigned long event, void *data)
++{
++	struct nss_notifier_clk *nss_notifier = container_of(nb, struct nss_notifier_clk, clk_nb);
++	struct clk_hw *core_hw = nss_notifier->core_hw;
++	int ret = 0;
++
++	/* Switch to safe parent */
++	if (event == PRE_RATE_CHANGE)
++		ret = nss_core_clk_set_parent(core_hw, NSS_SAFE_PARENT);
++
++	return notifier_from_errno(ret);
++}
++
++static int nss_notifier_register(struct device *dev, struct clk *clk,
++				 struct nss_notifier_clk *nss_notifier)
++{
++	int ret = 0;
++
++	nss_notifier->clk_nb.notifier_call = nss_notifier_cb;
++	ret = clk_notifier_register(clk, &nss_notifier->clk_nb);
++	if (ret)
++		dev_err(dev, "failed to register clock notifier: %d\n", ret);
++
++	return ret;
++}
++
++static const struct of_device_id qcom_nss_cc_match_table[] = {
++	{.compatible = "qcom,nss-cc"},
++	{ }
++};
++MODULE_DEVICE_TABLE(of, qcom_nss_cc_match_table);
++
++static struct device *nss_clk_cc;
++
++struct device *get_nss_clk_cc_dev(void)
++{
++	return nss_clk_cc;
++}
++EXPORT_SYMBOL(get_nss_clk_cc_dev);
++
++static int qcom_nss_cc_probe(struct platform_device *pdev)
++{
++	struct device *dev = &pdev->dev;
++	struct clk_nss *clk_nss;
++	struct nss_notifier_clk *nss_notifier;
++	struct clk_init_data init = {};
++	const struct of_device_id *id;
++	struct opp_table *table;
++	struct clk *clk;
++	int ret;
++
++	id = of_match_device(qcom_nss_cc_match_table, dev);
++	if (!id)
++		return -ENODEV;
++
++	clk_nss = devm_kzalloc(dev, sizeof(*clk_nss), GFP_KERNEL);
++	if (!clk_nss)
++		return -ENOMEM;
++
++	clk = devm_clk_get(dev, "ubi32-core1-clk-src");
++	if (IS_ERR_OR_NULL(clk)) {
++		dev_err(dev, "Can't find ubi32 core1 src clk");
++		return -ENODEV;
++	}
++
++	clk_nss->ubi32_core1 = __clk_get_hw(clk);
++
++	clk = devm_clk_get(dev, "ubi32-core2-clk-src");
++	if (IS_ERR_OR_NULL(clk)) {
++		dev_err(dev, "Can't find ubi32 core2 src clk");
++		return -ENODEV;
++	}
++
++	clk_nss->ubi32_core2 = __clk_get_hw(clk);
++
++	init.name = "nss_core_clk";
++	init.ops = &clk_ops_nss_core;
++	init.parent_names = (const char *[]){
++		"pxo",
++		"pll8_vote",
++		"pll0_vote",
++		"pll14",
++		"pll18",
++	};
++	init.num_parents = 5;
++	init.flags = CLK_SET_RATE_PARENT;
++
++	clk_nss->hw.init = &init;
++
++	ret = devm_clk_hw_register(dev, &clk_nss->hw);
++	if (ret) {
++		dev_err(dev, "failed to register regmap clock: %d\n", ret);
++		return ret;
++	}
++
++	clk = clk_nss->hw.clk;
++
++	nss_notifier = devm_kzalloc(dev, sizeof(*nss_notifier), GFP_KERNEL);
++	if (!nss_notifier)
++		return -ENOMEM;
++
++	nss_notifier->core_hw = &clk_nss->hw;
++
++	table = dev_pm_opp_set_regulators(dev, (const char *[]){"nss"}, 1);
++	if (IS_ERR(table)) {
++		ret = PTR_ERR(table);
++		if (ret != -EPROBE_DEFER)
++			dev_err(dev, "failed to set regulators %d\n", ret);
++
++		return ret;
++	}
++
++	ret = dev_pm_opp_of_add_table(dev);
++	if (ret) {
++		dev_err(dev, "failed to parse NSS freq thresholds\n");
++		return ret;
++	}
++
++	nss_clk_cc = dev;
++
++	ret = nss_notifier_register(dev, clk, nss_notifier);
++	if (ret)
++		return ret;
++
++	return 0;
++}
++
++static struct platform_driver qcom_nss_cc_driver = {
++	.probe = qcom_nss_cc_probe,
++	.driver = {
++		.name = "nss-cc",
++		.of_match_table = qcom_nss_cc_match_table,
++	},
++};
++module_platform_driver(qcom_nss_cc_driver);
++
++MODULE_DESCRIPTION("QCOM NSS Clock Controller Driver");
++MODULE_LICENSE("GPL v2");
++MODULE_ALIAS("platform:nss-cc");
+-- 
+2.32.0
+

@@ -165,3 +165,22 @@
 		opp-level = <2>;
 	};
 };
+
+&opp_table_nss {
+	/delete-node/opp-550000000;
+	/delete-node/opp-733000000;
+
+	opp-600000000 {
+		opp-hz = /bits/ 64 <600000000>;
+		opp-microvolt = <1100000>;
+		clock-latency-ns = <100000>;
+		opp-level = <1>;
+	};
+
+	opp-800000000 {
+		opp-hz = /bits/ 64 <800000000>;
+		opp-microvolt = <1150000>;
+		clock-latency-ns = <100000>;
+		opp-level = <2>;
+	};
+};
