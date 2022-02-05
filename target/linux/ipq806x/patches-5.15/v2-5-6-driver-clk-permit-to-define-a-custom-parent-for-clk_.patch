@@ -1,0 +1,111 @@
+From 88042c80de81a776f50ff3efc27d6390b756908d Mon Sep 17 00:00:00 2001
+From: Ansuel Smith <ansuelsmth@gmail.com>
+Date: Sat, 5 Feb 2022 03:32:24 +0100
+Subject: [PATCH 1/2] driver: clk: permit to define a custom parent for
+ clk_hw_get_parent_index
+
+Clk can have multiple parents. Some clk may require to get the cached
+index of other parent that are not current associated with the clk.
+Extend clk_hw_get_parent_index() with an optional parent to permit a
+driver to get the cached index. If parent is NULL, the parent associated
+with the provided hw clk is used.
+
+Signed-off-by: Ansuel Smith <ansuelsmth@gmail.com>
+---
+ drivers/clk/clk.c                 | 12 ++++++++----
+ drivers/clk/tegra/clk-periph.c    |  2 +-
+ drivers/clk/tegra/clk-sdmmc-mux.c |  2 +-
+ drivers/clk/tegra/clk-super.c     |  4 ++--
+ include/linux/clk-provider.h      |  2 +-
+ 5 files changed, 13 insertions(+), 9 deletions(-)
+
+diff --git a/drivers/clk/clk.c b/drivers/clk/clk.c
+index 8de6a22498e7..457f25111cb9 100644
+--- a/drivers/clk/clk.c
++++ b/drivers/clk/clk.c
+@@ -1711,13 +1711,17 @@ static int clk_fetch_parent_index(struct clk_core *core,
+ /**
+  * clk_hw_get_parent_index - return the index of the parent clock
+  * @hw: clk_hw associated with the clk being consumed
++ * @parent: optional clk_hw of the parent to be fetched
+  *
+- * Fetches and returns the index of parent clock. Returns -EINVAL if the given
+- * clock does not have a current parent.
++ * Fetches and returns the index of parent clock. If parent is not
++ * provided the parent of hw is used.
++ * Returns -EINVAL if the given clock does not have a current parent.
+  */
+-int clk_hw_get_parent_index(struct clk_hw *hw)
++int clk_hw_get_parent_index(struct clk_hw *hw, struct clk_hw *parent)
+ {
+-	struct clk_hw *parent = clk_hw_get_parent(hw);
++	/* With parent NULL get the current parent of hw */
++	if (parent == NULL)
++		parent = clk_hw_get_parent(hw);
+ 
+ 	if (WARN_ON(parent == NULL))
+ 		return -EINVAL;
+diff --git a/drivers/clk/tegra/clk-periph.c b/drivers/clk/tegra/clk-periph.c
+index 79ca3aa072b7..0fecdbbaca8f 100644
+--- a/drivers/clk/tegra/clk-periph.c
++++ b/drivers/clk/tegra/clk-periph.c
+@@ -116,7 +116,7 @@ static void clk_periph_restore_context(struct clk_hw *hw)
+ 	struct clk_hw *div_hw = &periph->divider.hw;
+ 	int parent_id;
+ 
+-	parent_id = clk_hw_get_parent_index(hw);
++	parent_id = clk_hw_get_parent_index(hw, NULL);
+ 	if (WARN_ON(parent_id < 0))
+ 		return;
+ 
+diff --git a/drivers/clk/tegra/clk-sdmmc-mux.c b/drivers/clk/tegra/clk-sdmmc-mux.c
+index 4f2c3309eea4..6013ca8444f4 100644
+--- a/drivers/clk/tegra/clk-sdmmc-mux.c
++++ b/drivers/clk/tegra/clk-sdmmc-mux.c
+@@ -210,7 +210,7 @@ static void clk_sdmmc_mux_restore_context(struct clk_hw *hw)
+ 	unsigned long rate = clk_hw_get_rate(hw);
+ 	int parent_id;
+ 
+-	parent_id = clk_hw_get_parent_index(hw);
++	parent_id = clk_hw_get_parent_index(hw, NULL);
+ 	if (WARN_ON(parent_id < 0))
+ 		return;
+ 
+diff --git a/drivers/clk/tegra/clk-super.c b/drivers/clk/tegra/clk-super.c
+index a98a420398fa..27cbbc09ef68 100644
+--- a/drivers/clk/tegra/clk-super.c
++++ b/drivers/clk/tegra/clk-super.c
+@@ -128,7 +128,7 @@ static void clk_super_mux_restore_context(struct clk_hw *hw)
+ {
+ 	int parent_id;
+ 
+-	parent_id = clk_hw_get_parent_index(hw);
++	parent_id = clk_hw_get_parent_index(hw, NULL);
+ 	if (WARN_ON(parent_id < 0))
+ 		return;
+ 
+@@ -180,7 +180,7 @@ static void clk_super_restore_context(struct clk_hw *hw)
+ 	struct clk_hw *div_hw = &super->frac_div.hw;
+ 	int parent_id;
+ 
+-	parent_id = clk_hw_get_parent_index(hw);
++	parent_id = clk_hw_get_parent_index(hw, NULL);
+ 	if (WARN_ON(parent_id < 0))
+ 		return;
+ 
+diff --git a/include/linux/clk-provider.h b/include/linux/clk-provider.h
+index 2faa6f7aa8a8..65b2850c09be 100644
+--- a/include/linux/clk-provider.h
++++ b/include/linux/clk-provider.h
+@@ -1198,7 +1198,7 @@ unsigned int clk_hw_get_num_parents(const struct clk_hw *hw);
+ struct clk_hw *clk_hw_get_parent(const struct clk_hw *hw);
+ struct clk_hw *clk_hw_get_parent_by_index(const struct clk_hw *hw,
+ 					  unsigned int index);
+-int clk_hw_get_parent_index(struct clk_hw *hw);
++int clk_hw_get_parent_index(struct clk_hw *hw, struct clk_hw *parent);
+ int clk_hw_set_parent(struct clk_hw *hw, struct clk_hw *new_parent);
+ unsigned int __clk_get_enable_count(struct clk *clk);
+ unsigned long clk_hw_get_rate(const struct clk_hw *hw);
+-- 
+2.34.1
+
