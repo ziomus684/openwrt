@@ -48,7 +48,7 @@ Signed-off-by: Sriram R <srirrama@codeaurora.org>
  ath11k_ahb-y += ahb.o
 --- /dev/null
 +++ b/drivers/net/wireless/ath/ath11k/nss.c
-@@ -0,0 +1,2386 @@
+@@ -0,0 +1,2367 @@
 +// SPDX-License-Identifier: BSD-3-Clause-Clear
 +/*
 + * Copyright (c) 2020 The Linux Foundation. All rights reserved.
@@ -250,17 +250,11 @@ Signed-off-by: Sriram R <srirrama@codeaurora.org>
 +		skb_put(skb, IEEE80211_TKIP_ICV_LEN);
 +}
 +
-+static void ath11k_nss_peer_mem_free(struct ath11k_base *ab, u32 peer_id)
++static void ath11k_nss_peer_mem_free(struct ath11k_base *ab, struct ath11k_peer *peer)
 +{
-+	struct ath11k_peer *peer;
-+
-+	spin_lock_bh(&ab->base_lock);
-+
-+	peer = ath11k_peer_find_by_id(ab, peer_id);
 +	if (!peer) {
-+		spin_unlock_bh(&ab->base_lock);
 +		ath11k_warn(ab, "ath11k_nss: unable to free peer mem, peer_id:%d\n",
-+			    peer_id);
++			    peer ? peer->peer_id : -1);
 +		return;
 +	}
 +
@@ -274,9 +268,8 @@ Signed-off-by: Sriram R <srirrama@codeaurora.org>
 +	}
 +
 +	complete(&peer->nss.complete);
-+	spin_unlock_bh(&ab->base_lock);
 +
-+	ath11k_dbg(ab, ATH11K_DBG_NSS, "nss peer %d mem freed\n", peer_id);
++	ath11k_dbg(ab, ATH11K_DBG_NSS, "nss peer %d mem freed\n", peer->peer_id);
 +}
 +
 +/*-----------------------------Events/Callbacks------------------------------*/
@@ -286,7 +279,7 @@ Signed-off-by: Sriram R <srirrama@codeaurora.org>
 +	u32 msg_type = msg->cm.type;
 +	enum nss_cmn_response response = msg->cm.response;
 +	u32 error =  msg->cm.error;
-+	u32 peer_id;
++	struct ath11k_peer *peer;
 +	struct nss_wifili_peer_stats *peer_stats;
 +
 +	if (!ab)
@@ -310,22 +303,22 @@ Signed-off-by: Sriram R <srirrama@codeaurora.org>
 +		if (response != NSS_CMN_RESPONSE_EMSG)
 +			break;
 +
-+		peer_id = (&msg->msg.peermsg)->peer_id;
++		peer = (struct ath11k_peer *)msg->cm.app_data;
 +
 +		/* free peer memory allocated during peer create due to failure */
-+		ath11k_nss_peer_mem_free(ab, peer_id);
++		ath11k_nss_peer_mem_free(ab, peer);
 +		break;
 +	case NSS_WIFILI_PEER_DELETE_MSG:
-+		peer_id = (&msg->msg.peermsg)->peer_id;
++		peer = (struct ath11k_peer *)msg->cm.app_data;
 +
 +		if (response == NSS_CMN_RESPONSE_EMSG)
 +			ath11k_warn(ab, "ath11k_nss: peer delete failed%d\n",
-+				    peer_id);
++				    peer ? peer->peer_id : -1);
 +
 +		/* free peer memory allocated during peer create irrespective of
 +		 * delete status
 +		 */
-+		ath11k_nss_peer_mem_free(ab, peer_id);
++		ath11k_nss_peer_mem_free(ab, peer);
 +		break;
 +	case NSS_WIFILI_PEER_SECURITY_TYPE_MSG:
 +		if (response == NSS_CMN_RESPONSE_EMSG)
@@ -1340,11 +1333,10 @@ Signed-off-by: Sriram R <srirrama@codeaurora.org>
 +	peer->nss.nss_stats->rxrate.bw = ath11k_mac_bw_to_mac80211_bw(ppdu_info->bw);
 +}
 +
-+int ath11k_nss_peer_delete(struct ath11k_base *ab, const u8 *addr)
++int ath11k_nss_peer_delete(struct ath11k_base *ab, struct ath11k_peer *peer)
 +{
 +	struct nss_wifili_peer_msg *peer_msg;
 +	struct nss_wifili_msg *wlmsg = NULL;
-+	struct ath11k_peer *peer;
 +	nss_wifili_msg_callback_t msg_cb;
 +	nss_tx_status_t status;
 +	int ret;
@@ -1352,18 +1344,9 @@ Signed-off-by: Sriram R <srirrama@codeaurora.org>
 +	if (!ab->nss.enabled)
 +		return 0;
 +
-+	spin_lock_bh(&ab->base_lock);
-+
-+	peer = ath11k_peer_find_by_addr(ab, addr);
-+	if (!peer) {
-+		ath11k_warn(ab, "peer not found for nss peer delete\n");
-+		spin_unlock_bh(&ab->base_lock);
-+		return -EINVAL;
-+	}
-+
 +	if (!peer->nss.vaddr) {
 +		ath11k_warn(ab, "peer already deleted or peer create failed %pM\n",
-+			    addr);
++			    peer->addr);
 +		spin_unlock_bh(&ab->base_lock);
 +		return -EINVAL;
 +	}
@@ -1385,14 +1368,14 @@ Signed-off-by: Sriram R <srirrama@codeaurora.org>
 +	nss_cmn_msg_init(&wlmsg->cm, ab->nss.if_num,
 +			 NSS_WIFILI_PEER_DELETE_MSG,
 +			 sizeof(struct nss_wifili_peer_msg),
-+			 msg_cb, NULL);
++			 msg_cb, peer);
 +
 +	reinit_completion(&peer->nss.complete);
 +
 +	status = nss_wifili_tx_msg(ab->nss.ctx, wlmsg);
 +	if (status != NSS_TX_SUCCESS) {
 +		ath11k_warn(ab, "nss send peer (%pM) delete msg tx error %d\n",
-+			    addr, status);
++			    peer->addr, status);
 +		ret = -EINVAL;
 +		kfree(wlmsg);
 +		goto free_peer;
@@ -1401,8 +1384,6 @@ Signed-off-by: Sriram R <srirrama@codeaurora.org>
 +			   peer->peer_id);
 +		ret = 0;
 +	}
-+
-+	spin_unlock_bh(&ab->base_lock);
 +
 +	kfree(wlmsg);
 +
@@ -1482,7 +1463,7 @@ Signed-off-by: Sriram R <srirrama@codeaurora.org>
 +	nss_cmn_msg_init(&wlmsg->cm, ab->nss.if_num,
 +			 NSS_WIFILI_PEER_CREATE_MSG,
 +			 sizeof(struct nss_wifili_peer_msg),
-+			 msg_cb, NULL);
++			 msg_cb, peer);
 +
 +	status = nss_wifili_tx_msg(ab->nss.ctx, wlmsg);
 +	if (status != NSS_TX_SUCCESS) {
@@ -2634,7 +2615,7 @@ Signed-off-by: Sriram R <srirrama@codeaurora.org>
 +void ath11k_nss_vdev_delete(struct ath11k_vif *arvif);
 +int ath11k_nss_vdev_up(struct ath11k_vif *arvif);
 +int ath11k_nss_vdev_down(struct ath11k_vif *arvif);
-+int ath11k_nss_peer_delete(struct ath11k_base *ab, const u8 *addr);
++int ath11k_nss_peer_delete(struct ath11k_base *ab, struct ath11k_peer *peer);
 +int ath11k_nss_set_peer_authorize(struct ath11k *ar, u16 peer_id);
 +int ath11k_nss_peer_create(struct ath11k_base *ab, struct ath11k_peer *peer);
 +void ath11k_nss_peer_stats_enable(struct ath11k *ar);
@@ -2697,7 +2678,7 @@ Signed-off-by: Sriram R <srirrama@codeaurora.org>
 +	return 0;
 +}
 +
-+static inline int ath11k_nss_peer_delete(struct ath11k_base *ab, const u8 *addr)
++static inline int ath11k_nss_peer_delete(struct ath11k_base *ab, struct ath11k_peer *peer)
 +{
 +	return 0;
 +}
