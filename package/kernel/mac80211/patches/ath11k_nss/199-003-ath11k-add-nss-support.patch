@@ -746,7 +746,7 @@ Signed-off-by: Sriram R <srirrama@codeaurora.org>
  
  	reinit_completion(&ar->peer_delete_done);
  
-+	ath11k_nss_peer_delete(ar->ab, addr);
++	ath11k_nss_peer_delete(ar->ab, peer);
 +
  	ret = ath11k_wmi_send_peer_delete_cmd(ar, addr, vdev_id);
  	if (ret) {
