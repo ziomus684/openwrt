@@ -347,6 +347,13 @@ define KernelPackage/ath11k/config
        endif
 endef
 
+ifdef CONFIG_ATH11K_NSS_SUPPORT
+ define KernelPackage/ath11k/install
+	$(INSTALL_DIR) $(1)/etc/hotplug.d/firmware
+	$(INSTALL_DATA) ./files/ath11k_nss.hotplug $(1)/etc/hotplug.d/firmware/12-ath11k_nss
+ endef
+endif
+
 define KernelPackage/ath11k-ahb
   $(call KernelPackage/mac80211/Default)
   TITLE:=Qualcomm 802.11ax AHB wireless chipset support
