@@ -48,6 +48,7 @@ platform_do_upgrade() {
 		rootfsname="rootfs"
 		mmc_do_upgrade "$1"
 		;;
+	redmi,ax6|\
 	xiaomi,ax3600)
 		# Enforce single partition.
 		fw_setenv flag_boot_rootfs 0
@@ -63,7 +64,6 @@ platform_do_upgrade() {
 		# First ubiformat the kernel partition than do nand upgrade
 		platform_do_upgrade_xiaomi_nand "$1"
 		;;
-	redmi,ax6|\
 	xiaomi,ax9000)
 		part_num="$(fw_printenv -n flag_boot_rootfs)"
 		if [ "$part_num" -eq "0" ]; then
