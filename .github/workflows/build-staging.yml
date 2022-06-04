@@ -11,6 +11,17 @@ on:
         description: "Extra lines to append to the config"
         required: false
         default: ""
+      compile_only:
+        description: 'Compile test but do not upload artifacts'
+        required: false
+        default: true
+        type: boolean
+      verbose:
+        description: 'Enable verbose output'
+        required: false
+        default: true
+        type: boolean
+
   push: {}
 
 jobs:
@@ -188,6 +199,11 @@ jobs:
           SUBTARGET=$(echo ${{ matrix.target }} | cut -d "/" -f 2)
           echo "TARGET=$TARGET" >> "$GITHUB_ENV"
           echo "SUBTARGET=$SUBTARGET" >> "$GITHUB_ENV"
+      
+      - name: Set verbose
+        if: ${{ github.event.inputs.verbose == 'true' }}
+        run: |
+          echo "VERBOSE=V=s" >> "$GITHUB_ENV"
 
       - name: Set configuration
         run: |
@@ -227,28 +243,28 @@ jobs:
       - name: Build tools
         run: |
           cd openwrt/
-          make tools/install -j$(nproc) || \
+          make tools/install -j$(nproc) ${{ env.VERBOSE }} || \
             make tools/install V=s
 
       - name: Build toolchain
         run: |
           cd openwrt/
-          make toolchain/install -j$(nproc) || \
+          make toolchain/install -j$(nproc) ${{ env.VERBOSE }} || \
             make toolchain/install V=s
 
       - name: Build target
         run: |
           cd openwrt/
-          make target/compile -j$(nproc) IGNORE_ERRORS='n m' || \
+          make target/compile -j$(nproc) IGNORE_ERRORS='n m' ${{ env.VERBOSE }} || \
             make target/compile IGNORE_ERRORS='n m' V=s
 
       - name: Build packages
         run: |
           cd openwrt/
-          make package/compile -j$(nproc) IGNORE_ERRORS='n m' || \
+          make package/compile -j$(nproc) IGNORE_ERRORS='n m' ${{ env.VERBOSE }} || \
             make package/compile IGNORE_ERRORS='n m' V=s
 
-          make package/install -j$(nproc) || \
+          make package/install -j$(nproc) ${{ env.VERBOSE }} || \
             make package/install V=s
 
           make package/index CONFIG_SIGNED_PACKAGES= V=s
@@ -256,7 +272,7 @@ jobs:
       - name: Build firmware
         run: |
           cd openwrt/
-          make target/install -j$(nproc) || \
+          make target/install -j$(nproc) ${{ env.VERBOSE }} || \
             make target/install V=s
 
       - name: Buildinfo
@@ -275,12 +291,14 @@ jobs:
           make checksum V=s
 
       - name: Upload images
+        if: ${{ github.event.inputs.compile_only == 'false' }}
         uses: actions/upload-artifact@v2
         with:
           name: ${{ env.TARGET }}-${{ env.TARGET }}-images
           path: openwrt/bin/targets/${{ matrix.target }}/openwrt-${{ env.TARGET }}-*
 
       - name: Upload packages
+        if: ${{ github.event.inputs.compile_only == 'false' }}
         uses: actions/upload-artifact@v2
         with:
           name: ${{ env.TARGET }}-${{ env.TARGET }}-packages
@@ -289,12 +307,14 @@ jobs:
             !openwrt/bin/targets/${{ matrix.target }}/packages/kmod-*.ipk
 
       - name: Upload kmods
+        if: ${{ github.event.inputs.compile_only == 'false' }}
         uses: actions/upload-artifact@v2
         with:
           name: ${{ env.TARGET }}-${{ env.TARGET }}-kmods
           path: openwrt/bin/targets/${{ matrix.target }}/packages/kmod-*.ipk
 
       - name: Upload supplementary
+        if: ${{ github.event.inputs.compile_only == 'false' }}
         uses: actions/upload-artifact@v2
         with:
           name: ${{ env.TARGET }}-${{ env.TARGET }}-supplementary
@@ -308,6 +328,7 @@ jobs:
             openwrt/bin/targets/${{ matrix.target }}/sha256sums*
 
       - name: Upload logs
+        if: ${{ github.event.inputs.compile_only == 'false' }}
         uses: actions/upload-artifact@v2
         with:
           name: ${{ env.TARGET }}-${{ env.TARGET }}-logs
