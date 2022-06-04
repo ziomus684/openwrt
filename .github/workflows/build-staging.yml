@@ -22,8 +22,6 @@ on:
         default: true
         type: boolean
 
-  push: {}
-
 jobs:
   setup:
     name: Setup cache
