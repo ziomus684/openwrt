@@ -254,13 +254,13 @@ jobs:
         run: |
           cd openwrt/
           make target/compile -j$(nproc) IGNORE_ERRORS='n m' ${{ env.VERBOSE }} || \
-            make target/compile IGNORE_ERRORS='n m' V=s
+            make target/compile IGNORE_ERRORS='n m' V=s BUILD_LOG=s
 
       - name: Build packages
         run: |
           cd openwrt/
           make package/compile -j$(nproc) IGNORE_ERRORS='n m' ${{ env.VERBOSE }} || \
-            make package/compile IGNORE_ERRORS='n m' V=s
+            make package/compile IGNORE_ERRORS='n m' V=s BUILD_LOG=s
 
           make package/install -j$(nproc) ${{ env.VERBOSE }} || \
             make package/install V=s
@@ -326,7 +326,6 @@ jobs:
             openwrt/bin/targets/${{ matrix.target }}/sha256sums*
 
       - name: Upload logs
-        if: ${{ github.event.inputs.compile_only == 'false' }}
         uses: actions/upload-artifact@v2
         with:
           name: ${{ env.TARGET }}-${{ env.TARGET }}-logs
