@@ -26,6 +26,11 @@ on:
         required: false
         default: false
         type: boolean
+      use_ccache:
+        description: 'Use ccache in build'
+        required: false
+        default: true
+        type: boolean
 
 jobs:
   setup:
@@ -172,6 +177,9 @@ jobs:
           mkdir -p feeds/
           ln -sf "$GITHUB_WORKSPACE/feeds" "$GITHUB_WORKSPACE/openwrt/feeds"
 
+          mkdir -p .ccache/
+          ln -sf "$GITHUB_WORKSPACE/.ccache" "$GITHUB_WORKSPACE/openwrt/.ccache"
+
       - name: Cache dl/
         uses: actions/cache@v3
         with:
@@ -204,6 +212,23 @@ jobs:
           SUBTARGET=$(echo ${{ matrix.target }} | cut -d "/" -f 2)
           echo "TARGET=$TARGET" >> "$GITHUB_ENV"
           echo "SUBTARGET=$SUBTARGET" >> "$GITHUB_ENV"
+
+      - name: Generate ccache hash
+        if: ${{ github.event.inputs.use_ccache == 'true' }}
+        run: |
+          cd openwrt/
+
+          CCACHE_HASH=$(git rev-parse @~)
+
+          echo "CCACHE_HASH=$CCACHE_HASH" >> "$GITHUB_ENV"
+
+      - name: Cache .ccache/
+        uses: actions/cache@v3
+        if: ${{ github.event.inputs.use_ccache == 'true' }}
+        with:
+          path: |
+            .ccache/
+          key: ccache-${{ matrix.os }}-${{ matrix.target }}-${{ env.CCACHE_HASH }}
       
       - name: Set verbose
         if: ${{ github.event.inputs.verbose == 'true' }}
@@ -235,6 +260,15 @@ jobs:
           echo -e "\n---- config post-defconfig ----\n"
           cat .config
           echo -e "\n---- config post-defconfig ----\n"
+
+      - name: Enable CCache
+        if: ${{ github.event.inputs.use_ccache == 'true' }}
+        run: |
+          cd openwrt/
+
+          echo "CONFIG_CCACHE=y" >> .config
+
+          make defconfig
 
       - name: Download toolchain
         run: |
