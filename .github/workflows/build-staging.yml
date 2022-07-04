@@ -21,6 +21,11 @@ on:
         required: false
         default: true
         type: boolean
+      build_toolchain:
+        description: 'Build toolchain (with this not selected an external toolchain is used)'
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   setup:
@@ -140,6 +145,8 @@ jobs:
 
   build:
     name: Build ${{ matrix.os }}/${{ matrix.target }}
+    env:
+      TOOLCHAIN_TYPE: external
     needs:
       - setup
     runs-on: ${{ matrix.os }}
@@ -203,6 +210,11 @@ jobs:
         run: |
           echo "VERBOSE=V=s" >> "$GITHUB_ENV"
 
+      - name: Enable toolchain build
+        if: ${{ github.event.inputs.build_toolchain == 'true' }}
+        run: |
+          echo "TOOLCHAIN_TYPE=build" >> "$GITHUB_ENV"
+
       - name: Set configuration
         run: |
           cd openwrt/
@@ -224,19 +236,25 @@ jobs:
           cat .config
           echo -e "\n---- config post-defconfig ----\n"
 
-      - name: Propagate toolchain
+      - name: Download toolchain
         run: |
           TOOLCHAIN_FILE=$(curl "https://downloads.openwrt.org/snapshots/targets/${{ matrix.target }}/sha256sums" \
             | sed -n -e 's/.*\(openwrt-toolchain.*\).tar.xz/\1/p')
-
-          echo "TOOLCHAIN_FILE=$TOOLCHAIN_FILE" >> "$GITHUB_ENV"
+          echo "TOOLCHAIN_FILE=$(pwd)/$TOOLCHAIN_FILE" >> "$GITHUB_ENV"
            
           wget -O - https://downloads.openwrt.org/snapshots/targets/${{ matrix.target }}/${TOOLCHAIN_FILE}.tar.xz \
             | tar --xz -xf -
 
-          mkdir -p openwrt/staging_dir/
-          ls -1 "$TOOLCHAIN_FILE"
-          mv -f "$TOOLCHAIN_FILE/$(ls -1 $TOOLCHAIN_FILE | grep toolchain)" openwrt/staging_dir/
+      - name: Prepare toolchain
+        run: |
+          if [ "$TOOLCHAIN_TYPE" == "build" ]; then
+            mkdir -p openwrt/staging_dir/
+            ls -1 $TOOLCHAIN_FILE
+            mv -f $TOOLCHAIN_FILE/$(ls -1 $TOOLCHAIN_FILE | grep toolchain) openwrt/staging_dir/
+          else
+            cd openwrt/
+            ./scripts/ext-toolchain.sh --toolchain $TOOLCHAIN_FILE/$(ls -1 $TOOLCHAIN_FILE | grep toolchain) --overwrite-config --config ${{ matrix.target }}
+          fi
 
       - name: Build tools
         run: |
