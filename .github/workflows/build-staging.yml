@@ -31,6 +31,11 @@ on:
         required: false
         default: true
         type: boolean
+      cache_tools:
+        description: 'Cache target tools'
+        required: false
+        default: true
+        type: boolean
 
 jobs:
   setup:
@@ -180,6 +185,9 @@ jobs:
           mkdir -p .ccache/
           ln -sf "$GITHUB_WORKSPACE/.ccache" "$GITHUB_WORKSPACE/openwrt/.ccache"
 
+          mkdir -p tools/
+          ln -sf "$GITHUB_WORKSPACE/tools" "$GITHUB_WORKSPACE/openwrt/tools"
+
       - name: Cache dl/
         uses: actions/cache@v3
         with:
@@ -196,6 +204,14 @@ jobs:
           path: |
             .ccache/
           key: ccache-${{ matrix.os }}-${{ matrix.target }}
+
+      - name: Cache tools/
+        uses: actions/cache@v3
+        if: ${{ github.event.inputs.cache_tools == 'true' }}
+        with:
+          path: |
+            tools/
+          key: tools-${{ matrix.os }}-${{ matrix.target }}
 
       - name: Cache feeds/
         uses: actions/cache@v3
