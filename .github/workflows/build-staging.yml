@@ -31,6 +31,11 @@ on:
         required: false
         default: true
         type: boolean
+      cache_tools:
+        description: 'Cache target tools'
+        required: false
+        default: true
+        type: boolean
 
 jobs:
   setup:
@@ -180,6 +185,18 @@ jobs:
           mkdir -p .ccache/
           ln -sf "$GITHUB_WORKSPACE/.ccache" "$GITHUB_WORKSPACE/openwrt/.ccache"
 
+          mkdir -p tools/build_dir/host
+          ln -sf "$GITHUB_WORKSPACE/tools/build_dir/host" "$GITHUB_WORKSPACE/openwrt/build_dir/host"
+
+          mkdir -p tools/build_dir/hostpkg
+          ln -sf "$GITHUB_WORKSPACE/tools/build_dir/hostpkg" "$GITHUB_WORKSPACE/openwrt/build_dir/hostpkg"
+
+          mkdir -p tools/build_dir/host
+          ln -sf "$GITHUB_WORKSPACE/tools/staging_dir/host" "$GITHUB_WORKSPACE/openwrt/staging_dir/host"
+
+          mkdir -p tools/build_dir/host
+          ln -sf "$GITHUB_WORKSPACE/tools/staging_dir/hostpkg" "$GITHUB_WORKSPACE/openwrt/staging_dir/hostpkg"
+
       - name: Cache dl/
         uses: actions/cache@v3
         with:
@@ -212,6 +229,25 @@ jobs:
           SUBTARGET=$(echo ${{ matrix.target }} | cut -d "/" -f 2)
           echo "TARGET=$TARGET" >> "$GITHUB_ENV"
           echo "SUBTARGET=$SUBTARGET" >> "$GITHUB_ENV"
+
+      - name: Generate tools hash
+        if: ${{ github.event.inputs.use_ccache == 'true' }}
+        run: |
+          cd openwrt/
+
+          TOOLS_HASH=$(find tools -maxdepth 1 -type d | while read -r tool; do
+            [ -f $tool/Makefile ] && grep PKG_HASH $tool/Makefile | sed s/PKG_HASH:=//
+          done | sha256sum | awk '{ print $1 }')
+
+          echo "TOOLS_HASH=$TOOLS_HASH" >> "$GITHUB_ENV"
+
+      - name: Cache tools/
+        uses: actions/cache@v3
+        if: ${{ github.event.inputs.cache_tools == 'true' }}
+        with:
+          path: |
+            tools/
+          key: tools-${{ matrix.os }}-${{ matrix.target }}-${{ env.TOOLS_HASH }}
 
       - name: Generate ccache hash
         if: ${{ github.event.inputs.use_ccache == 'true' }}
