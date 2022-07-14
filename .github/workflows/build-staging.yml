@@ -228,7 +228,7 @@ jobs:
           DEBIAN_FRONTEND: noninteractive
         run: |
           sudo apt-get update
-          sudo apt-get -y install libncurses-dev qemu-utils clang-12 tree
+          sudo apt-get -y install libncurses-dev qemu-utils clang-12 tree device-tree-compiler
 
       - name: Initialization environment
         run: |
@@ -321,8 +321,7 @@ jobs:
           make package/compile -j$(nproc) IGNORE_ERRORS='n m' ${{ env.VERBOSE }} || \
             make package/compile IGNORE_ERRORS='n m' V=s BUILD_LOG=s
 
-          make package/install -j$(nproc) ${{ env.VERBOSE }} || \
-            make package/install V=s
+          make package/install -j$(nproc) ${{ env.VERBOSE }}
 
           make package/index CONFIG_SIGNED_PACKAGES= V=s
 
@@ -331,6 +330,45 @@ jobs:
           cd openwrt/
           make target/install -j$(nproc) ${{ env.VERBOSE }} || \
             make target/install V=s
+
+      - name: Check bootargs
+        run: |
+          cd openwrt
+          OPENWRT_DIR=$(pwd)
+          cd build_dir
+          echo $(ls | grep target | grep openwrt)
+          cd $(ls | grep target | grep openwrt)
+          echo $(ls | grep linux)
+          cd $(ls | grep linux | grep $TARGET)
+          echo $(ls | grep linux-5)
+          cd $(ls | grep linux-5)
+
+          echo Checking DTB
+          touch $OPENWRT_DIR/dtb_files
+          for file in $(find . -name \*.dtb); do
+            echo $file;
+            echo $file >> $OPENWRT_DIR/dtb_files
+          done
+
+          echo Have bootargs
+          touch $OPENWRT_DIR/dtb_bootargs_files
+          for file in $(find . -name \*.dtb); do
+              fdtget -ts $file /chosen bootargs >&/dev/null && echo $file;
+          done | sort -u >> $OPENWRT_DIR/dtb_bootargs_files
+
+          for file in $(find . -name \*.dtb); do
+              fdtget -ts $file /chosen bootargs >&/dev/null && echo $file;
+          done | sort -u
+
+          echo Have bootargs-append
+          touch $OPENWRT_DIR/dtb_bootargs_append_files
+          for file in $(find . -name \*.dtb); do
+              fdtget -ts $file /chosen bootargs-append >&/dev/null && echo $file;
+          done | sort -u >> $OPENWRT_DIR/dtb_bootargs_append_files
+
+          for file in $(find . -name \*.dtb); do
+              fdtget -ts $file /chosen bootargs-append >&/dev/null && echo $file;
+          done | sort -u
 
       - name: Buildinfo
         run: |
@@ -383,6 +421,15 @@ jobs:
             openwrt/bin/targets/${{ matrix.target }}/openwrt-imagebuilder*
             openwrt/bin/targets/${{ matrix.target }}/openwrt-sdk*
             openwrt/bin/targets/${{ matrix.target }}/sha256sums*
+
+      - name: Upload supplementary
+        uses: actions/upload-artifact@v2
+        with:
+          name: ${{ env.TARGET }}-${{ env.TARGET }}-checkdts
+          path: |
+            openwrt/dtb_files
+            openwrt/dtb_bootargs_files
+            openwrt/dtb_bootargs_append_files
 
       - name: Upload logs
         uses: actions/upload-artifact@v2
