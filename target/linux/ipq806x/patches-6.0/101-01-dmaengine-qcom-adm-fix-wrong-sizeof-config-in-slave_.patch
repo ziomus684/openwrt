@@ -1,0 +1,36 @@
+From 546c7a35b7b52935a65b1eb2697b2a2fb9b5d584 Mon Sep 17 00:00:00 2001
+From: Christian Marangi <ansuelsmth@gmail.com>
+Date: Thu, 15 Sep 2022 22:29:58 +0200
+Subject: [PATCH] dmaengine: qcom-adm: fix wrong sizeof config in slave_config
+
+Fix broken slave_config function that uncorrectly compare the
+peripheral_size with the size of the config pointer instead of the size
+of the config struct. This cause the crci value to be ignored and cause
+a kernel panic on any slave that use adm driver.
+
+To fix this, compare to the size of the struct and NOT the size of the
+pointer.
+
+Fixes: 03de6b273805 ("dmaengine: qcom-adm: stop abusing slave_id config")
+Signed-off-by: Christian Marangi <ansuelsmth@gmail.com>
+Cc: stable@vger.kernel.org # v5.17+
+---
+ drivers/dma/qcom/qcom_adm.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/dma/qcom/qcom_adm.c b/drivers/dma/qcom/qcom_adm.c
+index facdacf8aede..c77d9de853de 100644
+--- a/drivers/dma/qcom/qcom_adm.c
++++ b/drivers/dma/qcom/qcom_adm.c
+@@ -494,7 +494,7 @@ static int adm_slave_config(struct dma_chan *chan, struct dma_slave_config *cfg)
+ 
+ 	spin_lock_irqsave(&achan->vc.lock, flag);
+ 	memcpy(&achan->slave, cfg, sizeof(struct dma_slave_config));
+-	if (cfg->peripheral_size == sizeof(config))
++	if (cfg->peripheral_size == sizeof(*config))
+ 		achan->crci = config->crci;
+ 	spin_unlock_irqrestore(&achan->vc.lock, flag);
+ 
+-- 
+2.37.2
+

@@ -1,0 +1,409 @@
+#include "qcom-ipq8065-nighthawk.dtsi"
+#include <dt-bindings/leds/common.h>
+
+/ {
+	model = "Netgear Nighthawk X4S R7800";
+	compatible = "netgear,r7800", "qcom,ipq8065", "qcom,ipq8064";
+};
+
+&leds {
+	usb1 {
+		label = "white:usb1";
+		gpios = <&qcom_pinmux 7 GPIO_ACTIVE_HIGH>;
+	};
+
+	usb2 {
+		label = "white:usb2";
+		gpios = <&qcom_pinmux 8 GPIO_ACTIVE_HIGH>;
+	};
+
+	esata {
+		label = "white:esata";
+		gpios = <&qcom_pinmux 26 GPIO_ACTIVE_HIGH>;
+	};
+};
+
+&partitions {
+	partition@1880000 {
+		label = "ubi";
+		reg = <0x1880000 0x6080000>;
+	};
+
+	partition@7900000 {
+		label = "reserve";
+		reg = <0x7900000 0x0700000>;
+		read-only;
+	};
+};
+
+&wifi0 {
+	nvmem-cells = <&macaddr_art_6>, <&precal_art_1000>;
+	nvmem-cell-names = "mac-address", "pre-calibration";
+	mac-address-increment = <(1)>;
+};
+
+&wifi1 {
+	nvmem-cells = <&macaddr_art_6>, <&precal_art_5000>;
+	nvmem-cell-names = "mac-address", "pre-calibration";
+	mac-address-increment = <(2)>;
+};
+
+&mdio0 {
+	status = "okay";
+
+	pinctrl-0 = <&mdio0_pins>;
+	pinctrl-names = "default";
+
+	switch@10 {
+		compatible = "qca,qca8337";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg = <0x10>;
+
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			port@0 {
+				reg = <0>;
+				label = "cpu";
+				ethernet = <&gmac1>;
+				phy-mode = "rgmii-id";
+
+				fixed-link {
+					speed = <1000>;
+					full-duplex;
+				};
+			};
+
+			port@1 {
+				reg = <1>;
+				label = "lan1";
+				phy-mode = "internal";
+				phy-handle = <&phy_port1>;
+			};
+
+			port@2 {
+				reg = <2>;
+				label = "lan2";
+				phy-mode = "internal";
+				phy-handle = <&phy_port2>;
+			};
+
+			port@3 {
+				reg = <3>;
+				label = "lan3";
+				phy-mode = "internal";
+				phy-handle = <&phy_port3>;
+			};
+
+			port@4 {
+				reg = <4>;
+				label = "lan4";
+				phy-mode = "internal";
+				phy-handle = <&phy_port4>;
+			};
+
+			port@5 {
+				reg = <5>;
+				label = "wan";
+				phy-mode = "internal";
+				phy-handle = <&phy_port5>;
+			};
+
+			// port@6 {
+			// 	reg = <6>;
+			// 	label = "cpu";
+			// 	ethernet = <&gmac2>;
+			// 	phy-mode = "sgmii";
+
+			// 	fixed-link {
+			// 		speed = <1000>;
+			// 		full-duplex;
+			// 	};
+			// };
+		};
+
+		mdio {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			phy_port1: phy@0 {
+				reg = <0>;
+
+				leds {
+
+					lan1_led@0 {
+						reg = <0>;
+						color = <LED_COLOR_ID_WHITE>;
+						function = LED_FUNCTION_LAN;
+						function-enumerator = <1>;
+						linux,default-trigger = "offload-phy-activity";
+						linux,supported-offload-triggers = "rx-blink", "tx-blink", "ollision-blink",
+										"link-10M", "link-100M", "link-1000M",
+										"half-duplex", "full-duplex", "linkup-over",
+										"power-on-reset", "blink-2hz", "blink-4hz",
+										"blink-8hz", "blink-auto";
+					};
+
+					lan1_led@1 {
+						reg = <1>;
+						color = <LED_COLOR_ID_AMBER>;
+						function = LED_FUNCTION_LAN;
+						function-enumerator = <1>;
+						linux,default-trigger = "offload-phy-activity";
+						linux,supported-offload-triggers = "rx-blink", "tx-blink", "ollision-blink",
+										"link-10M", "link-100M", "link-1000M",
+										"half-duplex", "full-duplex", "linkup-over",
+										"power-on-reset", "blink-2hz", "blink-4hz",
+										"blink-8hz", "blink-auto";
+					};
+				};
+			};
+
+			phy_port2: phy@1 {
+				reg = <1>;
+
+				leds {
+
+					lan1_led@0 {
+						reg = <0>;
+						color = <LED_COLOR_ID_WHITE>;
+						function = LED_FUNCTION_LAN;
+						function-enumerator = <2>;
+						linux,default-trigger = "offload-phy-activity";
+						linux,supported-offload-triggers = "rx-blink", "tx-blink", "ollision-blink",
+										"link-10M", "link-100M", "link-1000M",
+										"half-duplex", "full-duplex", "linkup-over",
+										"power-on-reset", "blink-2hz", "blink-4hz",
+										"blink-8hz", "blink-auto";
+					};
+
+					lan1_led@1 {
+						reg = <1>;
+						color = <LED_COLOR_ID_AMBER>;
+						function = LED_FUNCTION_LAN;
+						function-enumerator = <2>;
+						linux,default-trigger = "offload-phy-activity";
+						linux,supported-offload-triggers = "rx-blink", "tx-blink", "ollision-blink",
+										"link-10M", "link-100M", "link-1000M",
+										"half-duplex", "full-duplex", "linkup-over",
+										"power-on-reset", "blink-2hz", "blink-4hz",
+										"blink-8hz", "blink-auto";
+					};
+				};
+			};
+
+			phy_port3: phy@2 {
+				reg = <2>;
+
+				leds {
+					lan1_led@0 {
+						reg = <0>;
+						color = <LED_COLOR_ID_WHITE>;
+						function = LED_FUNCTION_LAN;
+						function-enumerator = <3>;
+						linux,default-trigger = "offload-phy-activity";
+						linux,supported-offload-triggers = "rx-blink", "tx-blink", "ollision-blink",
+										"link-10M", "link-100M", "link-1000M",
+										"half-duplex", "full-duplex", "linkup-over",
+										"power-on-reset", "blink-2hz", "blink-4hz",
+										"blink-8hz", "blink-auto";
+					};
+
+					lan1_led@1 {
+						reg = <1>;
+						color = <LED_COLOR_ID_AMBER>;
+						function = LED_FUNCTION_LAN;
+						function-enumerator = <3>;
+						linux,default-trigger = "offload-phy-activity";
+						linux,supported-offload-triggers = "rx-blink", "tx-blink", "ollision-blink",
+										"link-10M", "link-100M", "link-1000M",
+										"half-duplex", "full-duplex", "linkup-over",
+										"power-on-reset", "blink-2hz", "blink-4hz",
+										"blink-8hz", "blink-auto";
+					};
+				};
+			};
+
+			phy_port4: phy@3 {
+				reg = <3>;
+
+				leds {
+					lan1_led@0 {
+						reg = <0>;
+						color = <LED_COLOR_ID_WHITE>;
+						function = LED_FUNCTION_LAN;
+						function-enumerator = <4>;
+						linux,default-trigger = "offload-phy-activity";
+						linux,supported-offload-triggers = "rx-blink", "tx-blink", "ollision-blink",
+										"link-10M", "link-100M", "link-1000M",
+										"half-duplex", "full-duplex", "linkup-over",
+										"power-on-reset", "blink-2hz", "blink-4hz",
+										"blink-8hz", "blink-auto";
+					};
+
+					lan1_led@1 {
+						reg = <1>;
+						color = <LED_COLOR_ID_AMBER>;
+						function = LED_FUNCTION_LAN;
+						function-enumerator = <4>;
+						linux,default-trigger = "offload-phy-activity";
+						linux,supported-offload-triggers = "rx-blink", "tx-blink", "ollision-blink",
+										"link-10M", "link-100M", "link-1000M",
+										"half-duplex", "full-duplex", "linkup-over",
+										"power-on-reset", "blink-2hz", "blink-4hz",
+										"blink-8hz", "blink-auto";
+					};
+				};
+			};
+
+			phy_port5: phy@4 {
+				reg = <4>;
+			};
+		};
+	};
+
+	// phy0: ethernet-phy@0 {
+	// 	reg = <0>;
+	// 	qca,ar8327-initvals = <
+	// 		0x00004 0x7600000   /* PAD0_MODE */
+	// 		0x00008 0x1000000   /* PAD5_MODE */
+	// 		0x0000c 0x80        /* PAD6_MODE */
+	// 		0x000e4 0xaa545     /* MAC_POWER_SEL */
+	// 		0x000e0 0xc74164de  /* SGMII_CTRL */
+	// 		0x0007c 0x4e        /* PORT0_STATUS */
+	// 		0x00094 0x4e        /* PORT6_STATUS */
+	// 		0x00970 0x1e864443  /* QM_PORT0_CTRL0 */
+	// 		0x00974 0x000001c6  /* QM_PORT0_CTRL1 */
+	// 		0x00978 0x19008643  /* QM_PORT1_CTRL0 */
+	// 		0x0097c 0x000001c6  /* QM_PORT1_CTRL1 */
+	// 		0x00980 0x19008643  /* QM_PORT2_CTRL0 */
+	// 		0x00984 0x000001c6  /* QM_PORT2_CTRL1 */
+	// 		0x00988 0x19008643  /* QM_PORT3_CTRL0 */
+	// 		0x0098c 0x000001c6  /* QM_PORT3_CTRL1 */
+	// 		0x00990 0x19008643  /* QM_PORT4_CTRL0 */
+	// 		0x00994 0x000001c6  /* QM_PORT4_CTRL1 */
+	// 		0x00998 0x1e864443  /* QM_PORT5_CTRL0 */
+	// 		0x0099c 0x000001c6  /* QM_PORT5_CTRL1 */
+	// 		0x009a0 0x1e864443  /* QM_PORT6_CTRL0 */
+	// 		0x009a4 0x000001c6  /* QM_PORT6_CTRL1 */
+	// 		>;
+	// 	qca,ar8327-vlans = <
+	// 		0x1	0x5e	    /* VLAN1 Ports 1/2/3/4/6 */
+	// 		0x2	0x21	    /* VLAN2 Ports 0/5 */
+	// 	>;
+	// };
+
+	// phy4: ethernet-phy@4 {
+	// 	reg = <4>;
+	// 	qca,ar8327-initvals = <
+	// 		0x000e4 0x6a545     /* MAC_POWER_SEL */
+	// 		0x0000c 0x80        /* PAD6_MODE */
+	// 		>;
+	// };
+};
+
+// &gmac1 {
+// 	status = "okay";
+// 	compatible = "qcom,nss-gmac";
+// 	reg = <0x37200000 0x200000>;
+// 	interrupts = <GIC_SPI 223 IRQ_TYPE_LEVEL_HIGH>;
+// 	phy-mode = "rgmii";
+// 	qcom,id = <1>;
+// 	qcom,pcs-chanid = <0>;
+// 	qcom,phy-mdio-addr = <4>;
+// 	qcom,poll-required = <0>;
+// 	qcom,rgmii-delay = <1>;
+// 	qcom,phy_mii_type = <0>;
+// 	qcom,emulation = <0>;
+// 	qcom,forced-speed = <1000>;
+// 	qcom,forced-duplex = <1>;
+// 	qcom,socver = <0>;
+// 	qcom,irq = <255>;
+// 	mdiobus = <&mdio0>;
+
+// 	pinctrl-0 = <&rgmii2_pins>;
+// 	pinctrl-names = "default";
+
+// 	nvmem-cells = <&macaddr_art_6>;
+// 	nvmem-cell-names = "mac-address";
+
+// 	fixed-link {
+// 		speed = <1000>;
+// 		full-duplex;
+// 	};
+// };
+
+// &gmac2 {
+// 	status = "okay";
+// 	compatible = "qcom,nss-gmac";
+// 	reg = <0x37400000 0x200000>;
+// 	interrupts = <GIC_SPI 226 IRQ_TYPE_LEVEL_HIGH>;
+// 	phy-mode = "sgmii";
+// 	qcom,id = <2>;
+// 	qcom,pcs-chanid = <1>;
+// 	qcom,phy-mdio-addr = <0>;	/* none */
+// 	qcom,poll-required = <0>;	/* no polling */
+// 	qcom,rgmii-delay = <0>;
+// 	qcom,phy_mii_type = <1>;
+// 	qcom,emulation = <0>;
+// 	qcom,forced-speed = <1000>;
+// 	qcom,forced-duplex = <1>;
+// 	qcom,socver = <0>;
+// 	qcom,irq = <258>;
+// 	mdiobus = <&mdio0>;
+
+// 	nvmem-cells = <&macaddr_art_0>;
+// 	nvmem-cell-names = "mac-address";
+
+// 	fixed-link {
+// 		speed = <1000>;
+// 		full-duplex;
+// 	};
+// };
+
+&gmac1 {
+	status = "okay";
+	phy-mode = "rgmii";
+	qcom,id = <1>;
+	qcom,phy_mdio_addr = <4>;
+	qcom,poll_required = <0>;
+	qcom,rgmii_delay = <1>;
+	qcom,phy_mii_type = <0>;
+	qcom,emulation = <0>;
+	qcom,irq = <255>;
+	mdiobus = <&mdio0>;
+
+	pinctrl-0 = <&rgmii2_pins>;
+	pinctrl-names = "default";
+
+	nvmem-cells = <&macaddr_art_6>;
+	nvmem-cell-names = "mac-address";
+
+	fixed-link {
+		speed = <1000>;
+		full-duplex;
+	};
+};
+
+&gmac2 {
+	status = "okay";
+	phy-mode = "sgmii";
+	qcom,id = <2>;
+	qcom,phy_mdio_addr = <0>;	/* none */
+	qcom,poll_required = <0>;	/* no polling */
+	qcom,rgmii_delay = <0>;
+	qcom,phy_mii_type = <1>;
+	qcom,emulation = <0>;
+	qcom,irq = <258>;
+	mdiobus = <&mdio0>;
+
+	nvmem-cells = <&macaddr_art_0>;
+	nvmem-cell-names = "mac-address";
+
+	fixed-link {
+		speed = <1000>;
+		full-duplex;
+	};
+};
