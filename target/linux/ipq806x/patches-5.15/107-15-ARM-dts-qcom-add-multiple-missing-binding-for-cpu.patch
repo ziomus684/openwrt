@@ -27,11 +27,11 @@ Tested-by: Jonathan McDowell <noodles@earth.li>
 +			cooling-min-state = <0>;
 +			cooling-max-state = <10>;
 +			#cooling-cells = <2>;
-+			cpu-idle-states = <&CPU_SPC>;
++			cpu-idle-states = <&CPU_WFI>;
  		};
  
  		cpu1: cpu@1 {
-@@ -40,11 +49,35 @@
+@@ -40,11 +49,34 @@
  			next-level-cache = <&L2>;
  			qcom,acc = <&acc1>;
  			qcom,saw = <&saw1>;
@@ -43,16 +43,15 @@ Tested-by: Jonathan McDowell <noodles@earth.li>
 +			cooling-min-state = <0>;
 +			cooling-max-state = <10>;
 +			#cooling-cells = <2>;
-+			cpu-idle-states = <&CPU_SPC>;
++			cpu-idle-states = <&CPU_WFI>;
 +		};
 +
 +		idle-states {
-+			CPU_SPC: spc {
-+				compatible = "qcom,idle-state-spc";
-+				status = "disabled";
-+				entry-latency-us = <400>;
-+				exit-latency-us = <900>;
-+				min-residency-us = <3000>;
++			CPU_WFI: wfi {
++				compatible = "qcom,idle-state-wfi";
++				entry-latency-us = <1>;
++				exit-latency-us = <1>;
++				min-residency-us = <1>;
 +			};
  		};
  
