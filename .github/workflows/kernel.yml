@@ -7,7 +7,7 @@ on:
       - 'include/kernel-*'
       - 'package/kernel/**'
       - 'target/linux/generic/**'
-  push:
+  push: 
 
 permissions:
   contents: read
