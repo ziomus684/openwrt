@@ -156,7 +156,7 @@ jobs:
       - name: Configure external toolchain
         shell: su buildbot -c "sh -e {0}"
         working-directory: openwrt
-        run: |
+        run: | 
           echo CONFIG_ALL_KMODS=y >> .config
           echo CONFIG_DEVEL=y >> .config
           echo CONFIG_AUTOREMOVE=y >> .config
