@@ -19,6 +19,7 @@ jobs:
     outputs:
       target: ${{ steps.find_targets.outputs.target }}
       owner_lc: ${{ steps.lower_owner.outputs.owner_lc }}
+      ccache_hash: ${{ steps.ccache_hash.outputs.ccache_hash }}
 
     steps:
       - name: Checkout
