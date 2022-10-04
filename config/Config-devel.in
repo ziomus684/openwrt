@@ -47,6 +47,7 @@ menuconfig DEVEL
 
 	config BUILD_ALL_HOST_TOOLS
 		bool "Compile all host tools" if DEVEL
+		imply CCACHE
 		default n
 		help
 		  Compile all host host tools even if not needed. This is needed to prepare a
