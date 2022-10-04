@@ -31,6 +31,13 @@ jobs:
             | tr '[:upper:]' '[:lower:]')
           echo "::set-output name=owner_lc::$OWNER_LC"
 
+      - name: Generate ccache hash
+        id: ccache_hash
+        run: |
+          CCACHE_HASH=$(md5sum include/kernel-* | awk '{ print $1 }' \
+           | md5sum | awk '{ print $1 }')
+          echo "::set-output name=ccache_hash::$CCACHE_HASH"
+
       - name: Set targets
         id: find_targets
         run: |
@@ -138,7 +145,9 @@ jobs:
         uses: actions/cache@v3
         with:
           path: openwrt/.ccache
-          key: ccache-${{ env.TARGET }}/${{ env.SUBTARGET }}
+          key: ccache-kernel-${{ env.TARGET }}/${{ env.SUBTARGET }}-${{ needs.determine_targets.outputs.ccache_hash }}
+          restore-keys: |
+            ccache-kernel-${{ env.TARGET }}/${{ env.SUBTARGET }}-
 
       - name: Download external toolchain
         if: ${{ steps.cache-external-toolchain.outputs.cache-hit != 'true' }}
