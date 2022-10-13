@@ -271,11 +271,6 @@ jobs:
         run: |
           echo "VERBOSE=V=s" >> "$GITHUB_ENV"
 
-      - name: Enable toolchain build
-        if: ${{ github.event.inputs.build_toolchain == 'true' }}
-        run: |
-          echo "TOOLCHAIN_TYPE=build" >> "$GITHUB_ENV"
-
       - name: Set configuration
         run: |
           cd openwrt/
@@ -316,15 +311,10 @@ jobs:
             | tar --xz -xf -
 
       - name: Prepare toolchain
+        if: ${{ github.event.inputs.build_toolchain != 'true' }}
         run: |
-          if [ "$TOOLCHAIN_TYPE" == "build" ]; then
-            mkdir -p openwrt/staging_dir/
-            ls -1 $TOOLCHAIN_FILE
-            mv -f $TOOLCHAIN_FILE/$(ls -1 $TOOLCHAIN_FILE | grep toolchain) openwrt/staging_dir/
-          else
-            cd openwrt/
-            ./scripts/ext-toolchain.sh --toolchain $TOOLCHAIN_FILE/$(ls -1 $TOOLCHAIN_FILE | grep toolchain) --overwrite-config --config ${{ matrix.target }}
-          fi
+          cd openwrt/
+          ./scripts/ext-toolchain.sh --toolchain $TOOLCHAIN_FILE/$(ls -1 $TOOLCHAIN_FILE | grep toolchain) --overwrite-config --config ${{ matrix.target }}
 
       - name: Build tools
         run: |
