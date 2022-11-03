@@ -111,7 +111,7 @@ jobs:
           chown -R buildbot:buildbot openwrt
 
       - name: Set configs for tools container
-        if: github.event_name == 'push'
+        # if: github.event_name == 'push'
         shell: su buildbot -c "sh -e {0}"
         working-directory: openwrt
         run: |
