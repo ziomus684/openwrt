@@ -9,6 +9,7 @@ on:
     paths:
       - 'tools/**'
       - '.github/workflows/tools.yml'
+      - '.github/workflows/Dockerfile.tools'
 
 permissions:
   contents: read
