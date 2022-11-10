@@ -98,6 +98,16 @@ jobs:
           echo "TARGET=$TARGET" >> "$GITHUB_ENV"
           echo "SUBTARGET=$SUBTARGET" >> "$GITHUB_ENV"
 
+      - name: Prepare prebuilt tools
+        shell: su buildbot -c "sh -e {0}"
+        working-directory: openwrt
+        run: |
+          mkdir -p staging_dir build_dir
+          ln -s /prebuilt_tools/staging_dir/host staging_dir/host
+          ln -s /prebuilt_tools/build_dir/host build_dir/host
+
+          ./scripts/ext-tools.sh --refresh
+
       - name: Parse toolchain file
         working-directory: openwrt
         run: |
@@ -131,11 +141,6 @@ jobs:
         run: |
           wget -O - https://downloads.cdn.openwrt.org/snapshots/targets/${{ env.TARGET }}/${{ env.SUBTARGET }}/${TOOLCHAIN_FILE}.tar.xz \
             | tar --xz -xf -
-
-      - name: Extract prebuilt tools
-        shell: su buildbot -c "sh -e {0}"
-        working-directory: openwrt
-        run: ./scripts/ext-tools.sh --tools /tools.tar
 
       - name: Configure external toolchain
         shell: su buildbot -c "sh -e {0}"
@@ -215,10 +220,15 @@ jobs:
           echo "TARGET=$TARGET" >> "$GITHUB_ENV"
           echo "SUBTARGET=$SUBTARGET" >> "$GITHUB_ENV"
 
-      - name: Extract prebuilt tools
+      - name: Prepare prebuilt tools
         shell: su buildbot -c "sh -e {0}"
         working-directory: openwrt
-        run: ./scripts/ext-tools.sh --tools /tools.tar
+        run: |
+          mkdir -p staging_dir build_dir
+          ln -s /prebuilt_tools/staging_dir/host staging_dir/host
+          ln -s /prebuilt_tools/build_dir/host build_dir/host
+
+          ./scripts/ext-tools.sh --refresh
 
       - name: Setup Config
         shell: su buildbot -c "sh -e {0}"

@@ -145,11 +145,13 @@ jobs:
           name: linux-buildbot-config
           path: openwrt/.config
 
+      # github CI have some char blacklisted in path
+      # We have to tar the tools first to pass them to the upload job
       - name: Archive prebuilt tools
         if: github.event_name == 'push'
         shell: su buildbot -c "sh -e {0}"
         working-directory: openwrt
-        run: tar --mtime=now -cf tools.tar staging_dir/host build_dir/host
+        run: tar -cf tools.tar staging_dir/host build_dir/host
 
       - name: Upload prebuilt tools
         if: github.event_name == 'push'
