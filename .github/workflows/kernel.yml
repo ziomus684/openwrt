@@ -59,7 +59,7 @@ jobs:
           echo before $AFTER 
           echo after $BEFORE 
 
-          git diff $BEFORE..$AFTER
+          git diff $AFTER..$BEFORE 
 
       - name: Set targets
         id: find_targets
