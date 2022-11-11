@@ -52,6 +52,7 @@ jobs:
           echo "ccache_hash=$CCACHE_HASH" >> $GITHUB_OUTPUT
 
       - name: Check changed files from push
+        # if: github.event_name == 'push' && github.event.forced != 'true'
         if: github.event_name == 'push'
         run: |
           AFTER=${{ github.event.before  }}
@@ -59,7 +60,23 @@ jobs:
           echo before $AFTER 
           echo after $BEFORE 
 
-          git diff $AFTER..$BEFORE 
+          JSON='['
+          FIRST=1
+
+          CHANGES=git diff --name-only $AFTER..$BEFORE
+          echo $CHANGES
+
+          for FILE in $CHANGES; do
+            if echo $FILE | grep target/linux/; then
+              TARGET=$(echo target/linux/ipq806x | sed 's#target/linux/##')
+              [[ $FIRST -ne 1 ]] && JSON="$JSON"','
+              JSON="$JSON"'"'"${TARGET}"'"'
+              FIRST=0
+            fi
+          done
+          JSON="$JSON"']'
+
+          echo $JSON
 
       - name: Set targets
         id: find_targets
