@@ -96,6 +96,8 @@ jobs:
 
           if [ "${{ steps.detect_changes.outputs.global_check }}" != "1" ]; then
             TARGETS=""
+            echo $TARGETS
+
             for CHANGED_TARGET in "${{ steps.detect_changes.outputs.changed_targets }}"; do
               if echo "$TARGETS_TO_CHECK" | grep $CHANGED_TARGET; then
                 TARGETS="$TARGETS $(echo $TARGETS_TO_CHECK | grep $CHANGED_TARGET)"
