@@ -13,7 +13,7 @@ SUBTARGETS:=generic
 KERNEL_PATCHVER:=5.15
 
 KERNELNAME:=zImage Image dtbs
-# test 9
+# test 1
 
 include $(INCLUDE_DIR)/target.mk
 DEFAULT_PACKAGES += \
