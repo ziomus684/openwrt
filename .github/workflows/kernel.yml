@@ -56,17 +56,17 @@ jobs:
         if: github.event_name == 'push'
         id: detect_changes
         run: |
-          if git diff --name-only --exit-code target/linux/generic/; then
+          if ! git diff --name-only --exit-code target/linux/generic/; then
             echo "global_check=1" >> $GITHUB_OUTPUT
             exit 0
           fi
 
-          if git diff --name-only --exit-code include/kernel*; then
+          if ! git diff --name-only --exit-code include/kernel*; then
             echo "global_check=1" >> $GITHUB_OUTPUT
             exit 0
           fi
 
-          if git diff --name-only --exit-code .github/workflows/kernel.yml; then
+          if ! git diff --name-only --exit-code .github/workflows/kernel.yml; then
             echo "global_check=1" >> $GITHUB_OUTPUT
             exit 0
           fi
@@ -83,7 +83,7 @@ jobs:
           echo -e "\n---- changed targets ----\n"
 
           echo "global_check=0" >> $GITHUB_OUTPUT
-          echo "changed_target=$changed_targets" >> $GITHUB_OUTPUT
+          echo "changed_targets=$changed_targets" >> $GITHUB_OUTPUT
 
       - name: Set targets
         id: find_targets
@@ -111,11 +111,11 @@ jobs:
           done
           JSON="$JSON"']'
 
-           echo -e "\n---- targets ----\n"
-           echo "$JSON"
-           echo -e "\n---- targets ----\n"
+          echo -e "\n---- targets ----\n"
+          echo "$JSON"
+          echo -e "\n---- targets ----\n"
 
-           echo "target=$JSON" >> $GITHUB_OUTPUT
+          echo "target=$JSON" >> $GITHUB_OUTPUT
 
   # build:
   #   name: Build Kernel with external toolchain
