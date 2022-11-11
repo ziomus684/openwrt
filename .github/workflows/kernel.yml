@@ -54,31 +54,36 @@ jobs:
       - name: Check changed files from push
         # if: github.event_name == 'push' && github.event.forced != 'true'
         if: github.event_name == 'push'
+        id: detect_changes
         run: |
-          AFTER=${{ github.event.before  }}
-          BEFORE=${{ github.event.after  }}
-          echo before  $AFTER 
-          echo after $BEFORE 
+          if git diff --name-only --exit-code target/linux/generic/; then
+            echo "global_check=1" >> $GITHUB_OUTPUT
+            exit 0
+          fi
 
+          if git diff --name-only --exit-code include/kernel*; then
+            echo "global_check=1" >> $GITHUB_OUTPUT
+            exit 0
+          fi
 
-          git diff $AFTER..$BEFORE
-
-          CHANGES=$(git diff --name-only $AFTER..$BEFORE) 
-          echo $CHANGES
-
-          JSON='['
-          FIRST=1
-          for FILE in $CHANGES; do
+          if git diff --name-only --exit-code .github/workflows/kernel.yml; then
+            echo "global_check=1" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
+          changed_targets=""
+          for FILE in $(git diff --name-only ${{ github.event.after }}..${{ github.event.before }}); do
             if echo $FILE | grep target/linux/; then
-              TARGET=$(echo target/linux/ipq806x | sed 's#target/linux/##')
-              [[ $FIRST -ne 1 ]] && JSON="$JSON"','
-              JSON="$JSON"'"'"${TARGET}"'"'
-              FIRST=0
+              changed_targets="$changed_targets $(echo $FILE | sed 's#target/linux/##')"
             fi
           done
-          JSON="$JSON"']'
 
-          echo $JSON
+          echo -e "\n---- changed targets ----\n"
+          echo "$changed_targets"
+          echo -e "\n---- changed targets ----\n"
+
+          echo "global_check=0" >> $GITHUB_OUTPUT
+          echo "changed_target=$changed_targets" >> $GITHUB_OUTPUT
 
       - name: Set targets
         id: find_targets
@@ -86,6 +91,16 @@ jobs:
           export TARGETS="$(perl ./scripts/dump-target-info.pl targets 2>/dev/null \
             | sort -u -t '/' -k1,1 \
             | awk '{ print $1 }')"
+
+          if [ "${{ steps.changed_target.global_check }}" != "1" }} ]; then
+            TARGETS_TO_CHECK=$TARGETS
+            TARGETS=""
+            for CHANGED_TARGET in ${{ steps.changed_target.changed_targets }}; do
+              if echo $TARGETS_TO_CHECK | grep $CHANGED_TARGET; then
+                TARGETS="$TARGETS $(echo $TARGETS_TO_CHECK | grep $CHANGED_TARGET)"
+              fi
+            done
+          fi
 
           JSON='['
           FIRST=1
