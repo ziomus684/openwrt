@@ -101,6 +101,7 @@ jobs:
                 TARGETS="$TARGETS $(echo $TARGETS_TO_CHECK | grep $CHANGED_TARGET)"
               fi
             done
+            echo $TARGETS
           else
             TARGETS="$TARGETS_TO_CHECK"
           fi
