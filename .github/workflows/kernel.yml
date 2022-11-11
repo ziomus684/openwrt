@@ -94,11 +94,11 @@ jobs:
             | sort -u -t '/' -k1,1 \
             | awk '{ print $1 }')"
 
-          if [ "${{ steps.detect_changes.outputs.global_check }}" != "1" }} ]; then
+          if [ "${{ steps.detect_changes.outputs.global_check }}" != "1" ]; then
             TARGETS_TO_CHECK="$TARGETS"
             TARGETS=""
             for CHANGED_TARGET in ${{ steps.detect_changes.outputs.changed_targets }}; do
-              if echo $TARGETS_TO_CHECK | grep $CHANGED_TARGET; then
+              if echo "$TARGETS_TO_CHECK" | grep $CHANGED_TARGET; then
                 TARGETS="$TARGETS $(echo $TARGETS_TO_CHECK | grep $CHANGED_TARGET)"
               fi
             done
