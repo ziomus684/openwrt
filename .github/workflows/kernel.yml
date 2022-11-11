@@ -32,6 +32,11 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Dump json context
+        env:
+          JOB_CONTEXT: ${{ toJson(github) }}
+        run: echo "$JSON_CONTEXT"
+
       - name: Set lower case owner name
         id: lower_owner
         run: |
@@ -52,13 +57,9 @@ jobs:
           AFTER=${{ github.event.before  }}
           BEFORE=${{ github.event.after  }}
           echo before $AFTER
-          echo after $BEFORE
+          echo after $BEFORE 
 
-          git status
-
-          git log -n3 
-
-          git diff $BEFORE...$AFTER
+          git diff $BEFORE..$AFTER
 
       - name: Set targets
         id: find_targets
