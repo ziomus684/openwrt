@@ -55,7 +55,7 @@ jobs:
         run: |
           AFTER=${{ github.event.before  }}
           BEFORE=${{ github.event.after  }}
-          echo before $AFTER 
+          echo before  $AFTER 
           echo after $BEFORE 
 
 
