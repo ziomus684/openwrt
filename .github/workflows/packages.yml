@@ -63,6 +63,11 @@ jobs:
         with:
           path: openwrt
 
+      - name: Dump json context
+        env:
+          JOB_CONTEXT: ${{ toJson(github) }}
+        run: echo "$JSON_CONTEXT"
+
       - name: Fix permission
         run: |
           chown -R buildbot:buildbot openwrt
