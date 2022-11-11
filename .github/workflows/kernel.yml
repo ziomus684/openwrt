@@ -95,7 +95,7 @@ jobs:
             | awk '{ print $1 }')"
 
           if [ "${{ steps.detect_changes.outputs.global_check }}" != "1" }} ]; then
-            TARGETS_TO_CHECK=$TARGETS
+            TARGETS_TO_CHECK="$TARGETS"
             TARGETS=""
             for CHANGED_TARGET in ${{ steps.detect_changes.outputs.changed_targets }}; do
               if echo $TARGETS_TO_CHECK | grep $CHANGED_TARGET; then
