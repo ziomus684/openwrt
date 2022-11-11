@@ -76,7 +76,7 @@ jobs:
           changed_targets=""
           for FILE in $(git diff --name-only ${{ github.event.after }}..${{ github.event.before }}); do
             if echo $FILE | grep target/linux/; then
-              changed_targets="$changed_targets $(echo $FILE | sed 's#target/linux/##')"
+              changed_targets="$changed_targets $(echo $FILE | sed 's#target/linux/(.*)/.*#$1#')"
             fi
           done
 
