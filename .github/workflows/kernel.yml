@@ -90,9 +90,7 @@ jobs:
       - name: Set targets
         id: find_targets
         run: |
-          export TARGETS_TO_CHECK="$(perl ./scripts/dump-target-info.pl targets 2>/dev/null \
-            | sort -u -t '/' -k1,1 \
-            | awk '{ print $1 }')"
+          export TARGETS_TO_CHECK="$(perl ./scripts/dump-target-info.pl targets 2>/dev/null)"
 
           if [ "${{ steps.detect_changes.outputs.global_check }}" != "1" ]; then
             TARGETS=""
@@ -107,6 +105,8 @@ jobs:
           else
             TARGETS="$TARGETS_TO_CHECK"
           fi
+
+          TARGETS="$(echo $TARGETS | sort -u -t '/' | awk '{ print $1 }')"
 
           JSON='['
           FIRST=1
