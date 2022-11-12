@@ -98,7 +98,7 @@ jobs:
 
             for CHANGED_TARGET in "${{ steps.detect_changes.outputs.changed_targets }}"; do
               if echo "$TARGETS_TO_CHECK" | grep $CHANGED_TARGET; then
-                TARGETS="$TARGETS $(echo $TARGETS_TO_CHECK | grep $CHANGED_TARGET)"
+                TARGETS="$TARGETS $(echo "$TARGETS_TO_CHECK" | grep $CHANGED_TARGET)"
               fi
             done
             echo $TARGETS
@@ -106,7 +106,7 @@ jobs:
             TARGETS="$TARGETS_TO_CHECK"
           fi
 
-          TARGETS="$(echo $TARGETS | sort -u -t '/' | awk '{ print $1 }')"
+          TARGETS="$(echo $TARGETS | sort -u -t '/' -k 1 | awk '{ print $1 }')"
 
           JSON='['
           FIRST=1
